@@ -65,7 +65,7 @@
 
 - MIT License, `LICENSE.txt` 版权行 `Copyright (c) 2026 HeavenSky`.
 - 仓库 `https://github.com/HeavenSky/editor-console-toolkit`, homepage 与 bugs URL 由同一仓库派生.
-- 不建 `.github/`, 首版不配置 CI.
+- 发布由 `.github/workflows/release.yml` 驱动, 见 §11.
 
 ## 4. 工程和工具链
 
@@ -109,6 +109,7 @@
 
 ```text
 .vscode/**
+.github/**
 src/**
 scripts/**
 docs/**
@@ -119,6 +120,10 @@ tsconfig.json
 .gitignore
 **/*.vsix
 ```
+
+`.github/**` 必须显式列出: vsce 的 `defaultIgnore` 里虽有 `.github`, 但文件是以 `.github/workflows/release.yml` 这样的完整路径参与 minimatch 的, 裸 `.github` 匹配不到. 同理 `.ai-ctx/**` 也不能省 —— vsce 的文件收集用 `glob('**', { dot: true })`, 点目录不会被自动跳过.
+
+`.gitignore` 需要 `!.vscode/` 与 `!.github/` 两条反忽略: 若全局 gitignore 含 `.*/` 之类规则, 这两个目录会被整体忽略掉.
 
 目录结构:
 
@@ -133,6 +138,9 @@ tsconfig.json
 ├── .vscode
 │   ├── launch.json
 │   └── tasks.json
+├── .github
+│   └── workflows
+│       └── release.yml
 ├── README.md
 ├── CHANGELOG.md
 ├── LICENSE.txt
@@ -617,7 +625,47 @@ dependencies(非空)
 - CRLF 文件与文件末尾无换行的情况下插入位置正确.
 - 光标停在注释内, 字符串内, 或跨行选择时, 文档不被修改且只弹一条对应 warning.
 
-## 11. 风险与处理
+## 11. 发布流程
+
+`.github/workflows/release.yml`. 推送 `v*` 标签即触发; 也可用 `workflow_dispatch` 手动补发某个已存在的版本而不重新打标签.
+
+三个 job:
+
+| job | 触发条件 | 职责 |
+| --- | --- | --- |
+| `release` | 总是 | 校验 → 打包 vsix → 创建 GitHub Release 并附带 vsix → 上传 artifact |
+| `marketplace` | 仓库配置了 `VSCE_PAT` | 发布到 VS Code Marketplace |
+| `open-vsx` | 仓库配置了 `OVSX_PAT` | 发布到 Open VSX(VSCodium / Cursor / Windsurf 等发行版的市场) |
+
+`release` job 的校验链, 任一步失败即中止发布:
+
+1. **版本一致性** —— 标签名去掉 `v` 前缀后必须与 `package.json` 的 `version` 相等, 否则产物名与 Release 名会错位.
+2. **`npm run typecheck`** —— 本项目没有自动化测试, 类型检查是唯一的自动质量门, 因此必须在打包前独立跑一次.
+3. **本地化一致性** —— 两个 `package.nls*.json` 的 key 集必须相同, 且与清单里用到的 `%...%` 占位符一一对应; `runner.ts` 中的 `vscode.l10n.t` 源串必须与中文 bundle 的 key 一一对应. 这两项漏了不会让构建失败, 只会在市场上静默丢文案, 所以必须在 CI 拦住.
+4. **静态负向检查** —— `src/` 不得出现常驻 UI, 后台监听, 定时器, 磁盘读取, 网络与遥测 API; `package.json` 不得出现 `keybindings` / `views` / `viewsContainers` / `menus` / `activationEvents` / `extensionDependencies` / 非空 `dependencies` / `commands[].enablement`. 最后一项专门防止 §5.2 那个坑再次出现.
+5. **打包** —— `vsce package` 会触发 `vscode:prepublish` 做生产构建, 无需另外 compile.
+6. **Release 说明** —— 从 `CHANGELOG.md` 中抽取 `## <version>` 小节作为 Release body; 缺失时只告警, 不阻断发布.
+
+两个市场 job 都用 `--packagePath` 发布 `release` job 已经校验并附到 Release 的那个 vsix, **不重新构建**, 保证市场上的产物与 Release 附件逐字节一致.
+
+`secrets` 上下文在 job 级 `if` 中不可用, 因此 `release` job 末尾把两个 PAT 是否存在转成 job output 供下游判断. 未配置 PAT 时对应 job 直接跳过, 只发 GitHub Release, 不会失败.
+
+发布一个版本的完整步骤:
+
+```bash
+# 1. 更新 package.json 的 version 与 CHANGELOG.md 的 ## <version> 小节
+# 2. 提交
+git commit -am "chore: release v0.0.2"
+# 3. 打标签并推送
+git tag v0.0.2 && git push origin main --tags
+```
+
+首次发布前需要在仓库 Settings → Secrets and variables → Actions 配置:
+
+- `VSCE_PAT` —— Azure DevOps 的 Personal Access Token, 作用域 Marketplace (Publish). 不配则跳过官方市场.
+- `OVSX_PAT` —— Open VSX 的访问令牌. 不配则跳过.
+
+## 12. 风险与处理
 
 - **无自动化测试**: 回归完全依赖人工验收清单. 每次改动语言适配器或扫描器后必须重跑 §10.3 中相关条目. 这是为换取交付速度而明确接受的取舍, 也是首个应当补上的技术债.
 - 轻量词法扫描不覆盖所有语法: 宽松拒绝档意味着少数场景可能插到次优位置, 由撤销回退; 不以错误代码换取虚假的支持数量.
@@ -628,7 +676,7 @@ dependencies(非空)
 - Go / C / C++ 的 import 与 include 编辑可能与格式化器冲突: 放在 Tier 2 单独设计.
 - SQL 无统一日志语义: 必须按方言显式选择, 不提供通用 fallback.
 
-## 12. 已确认决策
+## 13. 已确认决策
 
 - **不做任何自动化测试**(单元, 集成, 性能), 保留 `tsc --noEmit` 作为唯一自动质量门, 功能验证由人工安装使用完成.
 - **首版语言范围为 12 个适配器 / 15 个 languageId**; `shellscript`, `powershell`, `perl` 与 Go 在 Tier 2, SQL 在 Tier 3.
@@ -641,9 +689,9 @@ dependencies(非空)
 - 多光标是必须验收的功能.
 - 扩展只操作自己带 marker 的日志, 不清理用户手写日志.
 
-## 13. 实现记录
+## 14. 实现记录
 
-### 13.1 与原设计的偏差
+### 14.1 与原设计的偏差
 
 - **新增 `src/commands/runner.ts`**: 三条命令只有模式参数之差, 把读取编辑器, 读配置, 建快照, 提交编辑与 warning 分发的共享流程集中在此, 三个 command 文件各自只剩一行转发.
 - **`createSnapshot` 接收纯文本而非 `TextDocument`**: 使 `core/` 全部模块不依赖 `vscode`, 转换放在 `runner.ts`.
@@ -653,7 +701,7 @@ dependencies(非空)
 - **默认 prefix 从中性方括号改为 `🎯🎯🎯 [DEBUG]`**: 更醒目也更易 grep. 已核对 emoji 的 UTF-16 代理对不会被 `escapeLiteral` 的按码点遍历拆断, 12 个适配器输出均正确.
 - **Toggle All 为交付后追加的第三条命令**: 语义定为注释/取消注释, 复用既有编辑类型, 未引入新的 `PlannedEdit` 变体.
 
-### 13.2 验证结果
+### 14.2 验证结果
 
 - `npm run typecheck` 通过.
 - `npm run compile` 通过.
@@ -662,7 +710,7 @@ dependencies(非空)
 - §10.2 静态负向检查全部无命中; `package.json` 的 `contributes` 只有 `commands` 与 `configuration`, `dependencies` 为空.
 - NLS 校验: 6 个 key 双语对称且与清单占位符一一对应; 8 条运行时 l10n 源串与 bundle 一一对应, 无缺失无多余.
 
-### 13.3 冒烟核对
+### 14.3 冒烟核对
 
 按 §3.2 不建设常驻自动化测试, 但交付前用一次性脚本直接驱动 `planEdits` 做过两轮核对, 核对后脚本已删除.
 
@@ -670,7 +718,7 @@ dependencies(非空)
 
 第二轮 11 项, 全部通过: 全部注释, 全部恢复, 往返幂等, 混合收敛, 只动带 marker 的行, 无日志时报原因, Lua 与 Python 注释符, tab 缩进, 无空格注释的恢复.
 
-### 13.4 未验证项
+### 14.4 未验证项
 
 以下只能在真实 Extension Host 中确认, 属于 §10.3 人工验收:
 
@@ -681,8 +729,8 @@ dependencies(非空)
 - 一次撤销恢复多光标编辑前状态.
 - 未保存文档 insert 后立即 toggle.
 
-## 14. 后续任务
+## 15. 后续任务
 
-- 补自动化测试, 优先覆盖 `planEdits` 与 `statementScanner` 两个纯逻辑模块.
+- 补自动化测试, 优先覆盖 `planEdits` 与 `statementScanner` 两个纯逻辑模块; 补上后在 §11 的 `release` job 里增加一个 `npm test` 步骤.
 - 按 §6.2 推进 Tier 2 语言.
-- Marketplace 发布.
+- 配置 `VSCE_PAT` 与 `OVSX_PAT` 两个 repository secret, 然后打第一个 `v0.0.1` 标签走一遍 §11 的发布流程.
