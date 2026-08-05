@@ -1,0 +1,9 @@
+{
+  "No active editor.": "没有活动编辑器.",
+  "Console Toolkit does not support this language yet.": "Console Toolkit 尚未支持该语言.",
+  "Select a single-line expression.": "请选择单行表达式.",
+  "Cannot find a safe place to insert the log.": "找不到安全的日志插入位置.",
+  "Place the cursor on an expression, not inside a comment.": "请把光标放在表达式上, 而不是注释内.",
+  "Place the cursor on an expression, not inside a string.": "请把光标放在表达式上, 而不是字符串内.",
+  "Nothing to log at the cursor.": "光标处没有可记录的表达式."
+}

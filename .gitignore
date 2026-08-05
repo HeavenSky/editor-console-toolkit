@@ -1,0 +1,9 @@
+node_modules/
+out/
+*.vsix
+
+# 全局 gitignore 忽略了所有点目录, 这里恢复扩展开发所需的配置
+!.vscode/
+
+# 全局 gitignore 忽略 lockfile, 但打包需要它锁定解析版本
+!package-lock.json

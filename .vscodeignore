@@ -1,0 +1,10 @@
+.vscode/**
+src/**
+scripts/**
+.ai-ctx/**
+out/**/*.map
+node_modules/**
+build.mjs
+tsconfig.json
+.gitignore
+**/*.vsix

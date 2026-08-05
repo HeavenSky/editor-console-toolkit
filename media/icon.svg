@@ -1,0 +1,24 @@
+<!-- 与 scripts/render-icon.mjs 中的解析式形状保持同形, 两者需一起改. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A3244" />
+      <stop offset="1" stop-color="#12161F" />
+    </linearGradient>
+    <linearGradient id="caret" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6FD6FF" />
+      <stop offset="1" stop-color="#3E8BFF" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="url(#bg)" />
+  <rect x="3" y="3" width="250" height="250" rx="53" fill="none" stroke="#3C4459" stroke-width="3" />
+  <path
+    d="M80 84 L132 128 L80 172"
+    fill="none"
+    stroke="url(#caret)"
+    stroke-width="22"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <rect x="148" y="156" width="68" height="18" rx="9" fill="#E6EBF5" />
+</svg>

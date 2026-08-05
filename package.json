@@ -1,0 +1,78 @@
+{
+  "name": "editor-console-toolkit",
+  "displayName": "Editor Console Toolkit",
+  "description": "%extension.description%",
+  "version": "0.0.1",
+  "publisher": "HeavenSky",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "l10n": "./l10n",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HeavenSky/editor-console-toolkit.git"
+  },
+  "homepage": "https://github.com/HeavenSky/editor-console-toolkit",
+  "bugs": {
+    "url": "https://github.com/HeavenSky/editor-console-toolkit/issues"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "console",
+    "log",
+    "debug",
+    "toggle log",
+    "multi language",
+    "developer tools"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "editorConsoleToolkit.insertConsoleLog",
+        "title": "%command.insertConsoleLog%",
+        "category": "%category%",
+        "enablement": "editorTextFocus"
+      },
+      {
+        "command": "editorConsoleToolkit.toggleConsoleLog",
+        "title": "%command.toggleConsoleLog%",
+        "category": "%category%",
+        "enablement": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Editor Console Toolkit",
+      "properties": {
+        "editorConsoleToolkit.prefix": {
+          "type": "string",
+          "default": "[ECT]",
+          "maxLength": 80,
+          "scope": "language-overridable",
+          "description": "%config.prefix%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node ./build.mjs",
+    "watch": "node ./build.mjs --watch",
+    "typecheck": "tsc --noEmit -p ./",
+    "icon": "node ./scripts/render-icon.mjs media/icon.png",
+    "package": "npm run typecheck && vsce package",
+    "vscode:prepublish": "node ./build.mjs --production"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "~1.80.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.9.3"
+  }
+}

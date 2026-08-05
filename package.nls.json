@@ -1,0 +1,7 @@
+{
+  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages.",
+  "category": "Console Toolkit",
+  "command.insertConsoleLog": "Insert Console Log",
+  "command.toggleConsoleLog": "Toggle Console Log",
+  "config.prefix": "Prefix included in generated console log messages."
+}
