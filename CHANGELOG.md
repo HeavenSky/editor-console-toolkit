@@ -9,7 +9,7 @@ Initial release.
 - **Insert Console Log** (`editorConsoleToolkit.insertConsoleLog`): inserts a debug log statement for the selected expression, or for the expression under the cursor, on the line after the enclosing statement.
 - **Toggle Console Log** (`editorConsoleToolkit.toggleConsoleLog`): inserts the log when it is missing and removes it when it is already there. Also removes the log when the cursor sits on the log line itself.
 - Support for 12 language adapters covering 15 language ids: JavaScript, JSX, TypeScript, TSX, Python, Java, Kotlin, C#, Lua, Ruby, PHP, Swift, Dart, Rust and Elixir.
-- `editorConsoleToolkit.prefix` setting (default `[ECT]`), scoped as `language-overridable` so it can be overridden per workspace, per folder and per language.
+- `editorConsoleToolkit.prefix` setting (default `🎯🎯🎯 [DEBUG]`), scoped as `language-overridable` so it can be overridden per workspace, per folder and per language.
 - Multi-cursor support. Every change made by one command invocation is a single undo step, and the document is never saved or formatted automatically.
 - Generated logs carry a short ownership marker (`// ect:v1`) so the extension only ever removes its own logs, and keeps removing them after the prefix is changed.
 - UI available in English and 简体中文, following the VS Code display language.

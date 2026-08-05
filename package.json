@@ -36,14 +36,12 @@
       {
         "command": "editorConsoleToolkit.insertConsoleLog",
         "title": "%command.insertConsoleLog%",
-        "category": "%category%",
-        "enablement": "editorTextFocus"
+        "category": "%category%"
       },
       {
         "command": "editorConsoleToolkit.toggleConsoleLog",
         "title": "%command.toggleConsoleLog%",
-        "category": "%category%",
-        "enablement": "editorTextFocus"
+        "category": "%category%"
       }
     ],
     "configuration": {
@@ -51,7 +49,7 @@
       "properties": {
         "editorConsoleToolkit.prefix": {
           "type": "string",
-          "default": "[ECT]",
+          "default": "🎯🎯🎯 [DEBUG]",
           "maxLength": 80,
           "scope": "language-overridable",
           "description": "%config.prefix%"

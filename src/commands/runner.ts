@@ -5,7 +5,7 @@ import { createSnapshot } from '../core/snapshot';
 import type { EndOfLine, SelectionLike, UnsupportedCode } from '../core/types';
 import { getAdapter } from '../languages/registry';
 
-const DEFAULT_PREFIX = '[ECT]';
+const DEFAULT_PREFIX = '🎯🎯🎯 [DEBUG]';
 
 /** 控制字符(含 CR/LF)会破坏生成的字符串字面量, 静默剥离即可, 不打断用户操作. */
 function sanitizePrefix(raw: string): string {

@@ -6,7 +6,7 @@ Two commands, no default keybindings, no sidebar, no status bar, no telemetry, n
 
 ## Commands
 
-Both commands live in the Command Palette under the `Console Toolkit` category and are enabled when a text editor has focus.
+Both commands live in the Command Palette under the `Console Toolkit` category. Type `Console Toolkit` to find them.
 
 | Command ID | Palette title |
 | --- | --- |
@@ -44,7 +44,7 @@ No default keybindings are contributed, so nothing collides with your existing s
 
 | Setting | Type | Default | Scope |
 | --- | --- | --- | --- |
-| `editorConsoleToolkit.prefix` | `string` | `[ECT]` | `language-overridable` |
+| `editorConsoleToolkit.prefix` | `string` | `🎯🎯🎯 [DEBUG]` | `language-overridable` |
 
 The prefix is included in the generated message so your debug output is easy to spot and easy to grep. It is read fresh on every invocation, so changes take effect immediately without reloading the window.
 
@@ -59,26 +59,26 @@ Because the scope is `language-overridable`, you can override it per workspace, 
 }
 ```
 
-An empty prefix is valid and produces `user:` instead of `[ECT] user:`. Control characters and line breaks are stripped silently.
+An empty prefix is valid and produces `user:` instead of `🎯🎯🎯 [DEBUG] user:`. Control characters and line breaks are stripped silently.
 
 ## Supported languages
 
-`TEXT` below stands for `<prefix> <label>:`, for example `[ECT] user:`.
+`TEXT` below stands for `<prefix> <label>:`, for example `🎯🎯🎯 [DEBUG] user:`.
 
 | Language | Language IDs | Generated statement |
 | --- | --- | --- |
-| JavaScript / JSX / TypeScript / TSX | `javascript`, `javascriptreact`, `typescript`, `typescriptreact` | `console.log('[ECT] user:', user);` |
-| Python | `python` | `print('[ECT] user:', user)` |
-| Java | `java` | `System.out.println("[ECT] user: " + String.valueOf(user));` |
-| Kotlin | `kotlin` | `println("[ECT] user: ${user}")` |
-| C# | `csharp` | `System.Console.WriteLine("[ECT] user: {0}", user);` |
-| Lua | `lua` | `print("[ECT] user:", user)` |
-| Ruby | `ruby` | `puts "[ECT] user: #{(user).inspect}"` |
-| PHP | `php` | `var_dump('[ECT] user:', $user);` |
-| Swift | `swift` | `print("[ECT] user:", user)` |
-| Dart | `dart` | `print('[ECT] user: ${user}');` |
-| Rust | `rust` | `println!("[ECT] user: {:?}", user);` |
-| Elixir | `elixir` | `IO.inspect(user, label: "[ECT] user")` |
+| JavaScript / JSX / TypeScript / TSX | `javascript`, `javascriptreact`, `typescript`, `typescriptreact` | `console.log('🎯🎯🎯 [DEBUG] user:', user);` |
+| Python | `python` | `print('🎯🎯🎯 [DEBUG] user:', user)` |
+| Java | `java` | `System.out.println("🎯🎯🎯 [DEBUG] user: " + String.valueOf(user));` |
+| Kotlin | `kotlin` | `println("🎯🎯🎯 [DEBUG] user: ${user}")` |
+| C# | `csharp` | `System.Console.WriteLine("🎯🎯🎯 [DEBUG] user: {0}", user);` |
+| Lua | `lua` | `print("🎯🎯🎯 [DEBUG] user:", user)` |
+| Ruby | `ruby` | `puts "🎯🎯🎯 [DEBUG] user: #{(user).inspect}"` |
+| PHP | `php` | `var_dump('🎯🎯🎯 [DEBUG] user:', $user);` |
+| Swift | `swift` | `print("🎯🎯🎯 [DEBUG] user:", user)` |
+| Dart | `dart` | `print('🎯🎯🎯 [DEBUG] user: ${user}');` |
+| Rust | `rust` | `println!("🎯🎯🎯 [DEBUG] user: {:?}", user);` |
+| Elixir | `elixir` | `IO.inspect(user, label: "🎯🎯🎯 [DEBUG] user")` |
 
 No imports are ever added. Java and C# use fully qualified names for that reason.
 
@@ -94,11 +94,11 @@ No imports are ever added. Java and C# use fully qualified names for that reason
 Every generated log carries a short trailing marker:
 
 ```js
-console.log('[ECT] user:', user); // ect:v1
+console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 ```
 
 ```python
-print('[ECT] user:', user) # ect:v1
+print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 ```
 
 This marker is the only thing that makes a line eligible for removal.
