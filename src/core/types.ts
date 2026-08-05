@@ -33,7 +33,8 @@ export type UnsupportedCode =
   | 'unbalanced-syntax'
   | 'cursor-in-comment'
   | 'cursor-in-string'
-  | 'empty-target';
+  | 'empty-target'
+  | 'no-managed-logs';
 
 export type Unsupported = { kind: 'unsupported'; code: UnsupportedCode };
 

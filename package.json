@@ -42,6 +42,11 @@
         "command": "editorConsoleToolkit.toggleConsoleLog",
         "title": "%command.toggleConsoleLog%",
         "category": "%category%"
+      },
+      {
+        "command": "editorConsoleToolkit.toggleAllConsoleLogs",
+        "title": "%command.toggleAllConsoleLogs%",
+        "category": "%category%"
       }
     ],
     "configuration": {

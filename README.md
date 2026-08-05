@@ -2,7 +2,7 @@
 
 Insert and safely toggle debug console statements across 15 languages, with zero runtime dependencies. UI available in English and 简体中文 (follows the VS Code display language).
 
-Two commands, no default keybindings, no sidebar, no status bar, no telemetry, no network access. The extension activates only when you run one of its commands.
+Three commands, no default keybindings, no sidebar, no status bar, no telemetry, no network access. The extension activates only when you run one of its commands.
 
 ## Commands
 
@@ -12,10 +12,25 @@ Both commands live in the Command Palette under the `Console Toolkit` category. 
 | --- | --- |
 | `editorConsoleToolkit.insertConsoleLog` | `Console Toolkit: Insert Console Log` |
 | `editorConsoleToolkit.toggleConsoleLog` | `Console Toolkit: Toggle Console Log` |
+| `editorConsoleToolkit.toggleAllConsoleLogs` | `Console Toolkit: Toggle All Console Logs` |
 
 **Insert Console Log** writes a log statement for the current target on the line after the enclosing statement. If an identical log is already there, nothing happens.
 
 **Toggle Console Log** removes the log when it is already there and inserts it when it is not. It also works when the cursor sits on the log line itself, which is the fastest way to clean one up.
+
+**Toggle All Console Logs** comments out every log this extension generated in the current file, and uncomments them the next time you run it. Nothing is deleted, so you can silence a whole file's worth of debug output and bring it back later. When some logs are commented and others are not, the first run comments out the rest so the file ends up in one consistent state.
+
+```js
+// before
+const user = getUser();
+console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+
+// after one run
+const user = getUser();
+// console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+```
+
+It only touches lines carrying the `ect:v1` marker, ignores your own comments and logs, keeps the indentation, and counts as a single undo step. If the file has no logs from this extension, it says so and changes nothing.
 
 The target is the selection when you have one (single line only), otherwise the expression under the cursor. Property chains are absorbed to the left, so with the cursor on `name` in `user.profile.name` you log `user.profile.name`, and with the cursor on `user` you log `user`.
 
@@ -35,6 +50,11 @@ No default keybindings are contributed, so nothing collides with your existing s
   {
     "key": "ctrl+alt+shift+l",
     "command": "editorConsoleToolkit.toggleConsoleLog",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "ctrl+alt+shift+k",
+    "command": "editorConsoleToolkit.toggleAllConsoleLogs",
     "when": "editorTextFocus"
   }
 ]
@@ -107,7 +127,7 @@ This marker is the only thing that makes a line eligible for removal.
 - The marker does not contain the prefix, so changing `editorConsoleToolkit.prefix` does not orphan the logs you already inserted.
 - Removal also requires the log to sit on the line right after its target statement, which is what keeps two logs for the same variable name in different places from being confused.
 
-Ship your code with the markers removed — toggle them off, or search for `ect:v1` across the workspace.
+Ship your code with the markers removed — toggle them off, or search for `ect:v1` across the workspace. The marker survives commenting, so **Toggle All Console Logs** can still find and restore a log you commented out earlier.
 
 ## When nothing happens
 

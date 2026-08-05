@@ -3,5 +3,6 @@
   "category": "控制台工具箱",
   "command.insertConsoleLog": "插入 Console 日志",
   "command.toggleConsoleLog": "切换 Console 日志",
+  "command.toggleAllConsoleLogs": "切换全部 Console 日志",
   "config.prefix": "生成的 Console 日志消息中包含的前缀."
 }

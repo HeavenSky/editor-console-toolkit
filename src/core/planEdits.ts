@@ -10,7 +10,11 @@ import type {
   UnsupportedCode
 } from './types';
 
-export type CommandMode = 'insert' | 'toggle';
+/** 逐 selection 工作的模式. */
+export type SelectionMode = 'insert' | 'toggle';
+
+/** 全部命令模式; `toggle-all` 作用于整个文件, 不看 selection. */
+export type CommandMode = SelectionMode | 'toggle-all';
 
 /** 删除整行时连同它的换行符一起去掉; 末行没有后继换行, 就吃掉它前面的那个. */
 function deleteRangeForLine(snapshot: DocumentSnapshot, index: number): OffsetRange {
@@ -41,7 +45,7 @@ export function planEdits(
   adapter: LanguageAdapter,
   prefix: string,
   selections: readonly SelectionLike[],
-  mode: CommandMode
+  mode: SelectionMode
 ): EditPlan {
   const pattern = adapter.markerPattern();
   const markerSuffix = buildMarkerSuffix(adapter.commentPrefix);
@@ -132,4 +136,60 @@ export function planEdits(
   }
 
   return { edits, firstReason };
+}
+
+/** 已被注释掉的日志行需要删掉的字符数(注释符加至多一个空格); 不是注释行返回 null. */
+function commentedLength(lineText: string, indentLength: number, commentPrefix: string): number | null {
+  const rest = lineText.slice(indentLength);
+  if (!rest.startsWith(commentPrefix)) {
+    return null;
+  }
+  const after = rest.slice(commentPrefix.length);
+  return commentPrefix.length + (after.startsWith(' ') ? 1 : 0);
+}
+
+/**
+ * 注释或取消注释当前文件里全部带 marker 的日志, 不删除任何行.
+ *
+ * 只要还有一条未注释, 就把未注释的全部注释掉(混合状态一次收敛为全部注释);
+ * 全部已注释时则全部恢复. 注释符加在缩进之后, 因此缩进保持不变,
+ * 行尾 marker 不受影响, 之后仍能被单条 Toggle 识别.
+ */
+export function planToggleAllLogs(snapshot: DocumentSnapshot, adapter: LanguageAdapter): EditPlan {
+  const pattern = adapter.markerPattern();
+  const commentPrefix = adapter.commentPrefix;
+  const targets: { offset: number; commented: number | null }[] = [];
+
+  for (let index = 0; index < snapshot.lineCount; index++) {
+    const line = snapshot.lineAt(index);
+    if (!isLogLine(line.text, pattern)) {
+      continue;
+    }
+    const indentLength = /^[ \t]*/.exec(line.text)![0].length;
+    targets.push({
+      offset: line.start + indentLength,
+      commented: commentedLength(line.text, indentLength, commentPrefix)
+    });
+  }
+
+  if (targets.length === 0) {
+    return { edits: [], firstReason: 'no-managed-logs' };
+  }
+
+  const edits: PlannedEdit[] = [];
+  const hasActive = targets.some((target) => target.commented === null);
+  for (const target of targets) {
+    if (hasActive) {
+      if (target.commented === null) {
+        edits.push({ kind: 'insert', offset: target.offset, text: `${commentPrefix} ` });
+      }
+    } else {
+      edits.push({
+        kind: 'delete',
+        range: { start: target.offset, end: target.offset + target.commented! }
+      });
+    }
+  }
+
+  return { edits, firstReason: null };
 }

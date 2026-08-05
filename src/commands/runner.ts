@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { planEdits } from '../core/planEdits';
+import { planEdits, planToggleAllLogs } from '../core/planEdits';
 import type { CommandMode } from '../core/planEdits';
 import { createSnapshot } from '../core/snapshot';
 import type { EndOfLine, SelectionLike, UnsupportedCode } from '../core/types';
@@ -55,6 +55,11 @@ function warn(code: UnsupportedCode): void {
     case 'empty-target':
       void vscode.window.showWarningMessage(vscode.l10n.t('Nothing to log at the cursor.'));
       return;
+    case 'no-managed-logs':
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t('No Console Toolkit logs in this file.')
+      );
+      return;
   }
 }
 
@@ -74,12 +79,19 @@ export async function runConsoleLogCommand(mode: CommandMode): Promise<void> {
 
   const eol: EndOfLine = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
   const snapshot = createSnapshot(document.getText(), document.languageId, eol);
-  const selections: SelectionLike[] = editor.selections.map((selection) => ({
-    anchor: document.offsetAt(selection.anchor),
-    active: document.offsetAt(selection.active)
-  }));
 
-  const plan = planEdits(snapshot, adapter, readPrefix(document), selections, mode);
+  // toggle-all 作用于整个文件, 既不看 selection 也不需要 prefix.
+  let plan;
+  if (mode === 'toggle-all') {
+    plan = planToggleAllLogs(snapshot, adapter);
+  } else {
+    const selections: SelectionLike[] = editor.selections.map((selection) => ({
+      anchor: document.offsetAt(selection.anchor),
+      active: document.offsetAt(selection.active)
+    }));
+    plan = planEdits(snapshot, adapter, readPrefix(document), selections, mode);
+  }
+
   if (plan.edits.length === 0) {
     if (plan.firstReason) {
       warn(plan.firstReason);

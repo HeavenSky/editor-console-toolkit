@@ -3,5 +3,6 @@
   "category": "Console Toolkit",
   "command.insertConsoleLog": "Insert Console Log",
   "command.toggleConsoleLog": "Toggle Console Log",
+  "command.toggleAllConsoleLogs": "Toggle All Console Logs",
   "config.prefix": "Prefix included in generated console log messages."
 }
