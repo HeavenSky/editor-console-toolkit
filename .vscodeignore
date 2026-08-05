@@ -1,6 +1,7 @@
 .vscode/**
 src/**
 scripts/**
+docs/**
 .ai-ctx/**
 out/**/*.map
 node_modules/**
