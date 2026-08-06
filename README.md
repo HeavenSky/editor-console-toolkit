@@ -13,6 +13,8 @@ Two everyday chores, one extension, zero runtime dependencies.
 
 UI in English and 简体中文, following your VS Code display language.
 
+**[简体中文文档](README.zh-cn.md)**
+
 ---
 
 ## Install
@@ -264,7 +266,7 @@ A scan costs the same whether you have two ports open or fifty. If one fails, th
 | `editorConsoleToolkit.ports.systemPortMax` | `number` | `1024` | Highest port number treated as a system port. |
 | `editorConsoleToolkit.ports.includeUdp` | `boolean` | `false` | Also list UDP endpoints, not just TCP listeners. |
 
-A process counts as a system process when its executable lives in a system directory (`/System`, `/usr/libexec`, `/usr/sbin`, `/sbin`, `/usr/lib`, `C:\Windows`) **or** when every port it listens on is at or below `systemPortMax`. One port above the threshold is enough to keep it visible, so a system-path process squatting on `8080` is never silently hidden.
+A process counts as a system process when it was started from a system directory **or** when every port it listens on is at or below `systemPortMax`. One port above the threshold is enough to keep it visible, so a system process squatting on `8080` is never silently hidden.
 
 ### Platform support
 
