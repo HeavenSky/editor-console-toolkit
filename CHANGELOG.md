@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.0.2
+## v0.0.2 2026-08-07 Port Toolkit
 
 Adds a second feature area: **Port Toolkit**, for seeing which processes hold your local ports and terminating them in batches.
 
@@ -29,7 +29,7 @@ Adds a second feature area: **Port Toolkit**, for seeing which processes hold yo
 - No default keybindings are contributed for any Port Toolkit command.
 - Port and process discovery uses `lsof` on macOS, `ss` (falling back to `netstat`) on Linux, and PowerShell on Windows. **The Linux and Windows parsers are covered by fixture tests but have not been verified on real Linux or Windows machines.**
 
-## 0.0.1
+## v0.0.1 2026-08-05
 
 Initial release.
 
