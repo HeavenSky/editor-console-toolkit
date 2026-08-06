@@ -2,17 +2,17 @@
 
 Insert and safely toggle debug console statements across 15 languages, with zero runtime dependencies. UI available in English and 简体中文 (follows the VS Code display language).
 
-Three commands, no default keybindings, no sidebar, no status bar, no telemetry, no network access. The extension activates only when you run one of its commands.
+Three commands, no sidebar, no status bar, no telemetry, no network access. The extension activates only when you run one of its commands.
 
 ## Commands
 
-Both commands live in the Command Palette under the `Console Toolkit` category. Type `Console Toolkit` to find them.
+All three commands live in the Command Palette under the `Console Toolkit` category. Type `Console Toolkit` to find them.
 
-| Command ID | Palette title |
-| --- | --- |
-| `editorConsoleToolkit.insertConsoleLog` | `Console Toolkit: Insert Console Log` |
-| `editorConsoleToolkit.toggleConsoleLog` | `Console Toolkit: Toggle Console Log` |
-| `editorConsoleToolkit.toggleAllConsoleLogs` | `Console Toolkit: Toggle All Console Logs` |
+| Command ID | Palette title | Default keybinding |
+| --- | --- | --- |
+| `editorConsoleToolkit.insertConsoleLog` | `Console Toolkit: Insert Console Log` | `Alt+L` |
+| `editorConsoleToolkit.toggleConsoleLog` | `Console Toolkit: Toggle Console Log` | — |
+| `editorConsoleToolkit.toggleAllConsoleLogs` | `Console Toolkit: Toggle All Console Logs` | — |
 
 **Insert Console Log** writes a log statement for the current target on the line after the enclosing statement. If an identical log is already there, nothing happens.
 
@@ -38,24 +38,25 @@ Multi-cursor is supported. Everything one invocation changes is a single undo st
 
 ### Keybindings
 
-No default keybindings are contributed, so nothing collides with your existing setup. Bind them yourself in `keybindings.json`:
+Only **Insert Console Log** ships with a default keybinding, `Alt+L` (`Option+L` on macOS), guarded by `editorTextFocus && !editorReadonly` so it never fires outside a writable editor. The other two commands are deliberately left unbound so nothing else collides with your existing setup.
+
+Bind them yourself in `keybindings.json`, and rebind or unbind `Alt+L` the same way:
 
 ```json
 [
   {
-    "key": "ctrl+alt+l",
-    "command": "editorConsoleToolkit.insertConsoleLog",
-    "when": "editorTextFocus"
-  },
-  {
     "key": "ctrl+alt+shift+l",
     "command": "editorConsoleToolkit.toggleConsoleLog",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && !editorReadonly"
   },
   {
     "key": "ctrl+alt+shift+k",
     "command": "editorConsoleToolkit.toggleAllConsoleLogs",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && !editorReadonly"
+  },
+  {
+    "key": "alt+l",
+    "command": "-editorConsoleToolkit.insertConsoleLog"
   }
 ]
 ```

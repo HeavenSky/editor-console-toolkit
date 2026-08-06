@@ -221,7 +221,11 @@ editorConsoleToolkit.toggleConsoleLog
 editorConsoleToolkit.toggleAllConsoleLogs
 ```
 
-三条命令的 `title` 与 `category` 使用 `%...%` 占位符. 不声明 `keybindings`, `menus`, `views`, `viewsContainers`, `activationEvents`, `extensionDependencies`.
+三条命令的 `title` 与 `category` 使用 `%...%` 占位符. 不声明 `menus`, `views`, `viewsContainers`, `activationEvents`, `extensionDependencies`.
+
+`contributes.keybindings` 只声明一条: `editorConsoleToolkit.insertConsoleLog` 绑 `alt+l`, `when` 为 `editorTextFocus && !editorReadonly`. 另两条命令刻意不给默认键, 减少与用户既有键位冲突的面积.
+
+`when` 与 `enablement` 不同: 前者只影响按键分派, 不参与命令面板的候选过滤, 因此不会重现下面那个坑. 命令会写文档, 所以必须带 `!editorReadonly`, 避免在只读编辑器里触发空操作.
 
 **不要给命令加 `enablement`.** 命令面板的 `getGlobalCommandPicks()` 对候选执行 `.filter(action => action instanceof MenuItemAction && action.enabled)` —— `enablement` 为 false 的命令是被**完全丢弃**而非置灰. 判定使用 `activeEditorPane.scopedContextKeyService`, 而 `editorTextFocus` 由编辑器文本区的 focus/blur 驱动(`onDidBlurEditorText` → `_updateFromFocus`, 默认 false). 命令面板一打开, 编辑器文本区即失焦, 该键必为 false. 因此 `"enablement": "editorTextFocus"` 会让命令**永远不出现在面板里**. 安全性由运行时兜底: 没有活动编辑器或语言不支持时各给一条 warning.
 
@@ -541,7 +545,7 @@ Command Palette / 用户自绑快捷键
 
 - [x] 工程基线: `build.mjs`, `tsconfig.json`, `.gitignore`, `.vscodeignore`, `.vscode/launch.json`, `.vscode/tasks.json`.
 - [x] 扩展身份与发布文件: `package.json`, `LICENSE.txt`, `CHANGELOG.md`, README, 两个 `package.nls*.json`, `l10n/bundle.l10n.zh-cn.json`, `scripts/render-icon.mjs` 与 `media/icon.svg`.
-- [x] 清单契约: 命令与 `editorConsoleToolkit.prefix` 配置; 不声明 `activationEvents`, `keybindings`, `views`, `viewsContainers`, `menus`, `extensionDependencies`.
+- [x] 清单契约: 命令, insert 的单条默认 `keybindings` 与 `editorConsoleToolkit.prefix` 配置; 不声明 `activationEvents`, `views`, `viewsContainers`, `menus`, `extensionDependencies`.
 - [x] `src/core/types.ts` 与 `src/core/snapshot.ts`: 不可变 `DocumentSnapshot` 与行索引.
 - [x] `src/core/selectionResolver.ts`: 显式单行选择, 反向选择, 空选择的标识符与属性链扩展.
 - [x] `src/core/statementScanner.ts`: 括号深度与字符串状态扫描, 50 行上限, 注释/字符串内光标判定, 锚点与缩进.
@@ -591,7 +595,6 @@ vscode.git
 对 `package.json` 检查不存在:
 
 ```text
-contributes.keybindings
 contributes.views
 contributes.viewsContainers
 contributes.menus
@@ -642,7 +645,7 @@ dependencies(非空)
 1. **版本一致性** —— 标签名去掉 `v` 前缀后必须与 `package.json` 的 `version` 相等, 否则产物名与 Release 名会错位.
 2. **`npm run typecheck`** —— 本项目没有自动化测试, 类型检查是唯一的自动质量门, 因此必须在打包前独立跑一次.
 3. **本地化一致性** —— 两个 `package.nls*.json` 的 key 集必须相同, 且与清单里用到的 `%...%` 占位符一一对应; `runner.ts` 中的 `vscode.l10n.t` 源串必须与中文 bundle 的 key 一一对应. 这两项漏了不会让构建失败, 只会在市场上静默丢文案, 所以必须在 CI 拦住.
-4. **静态负向检查** —— `src/` 不得出现常驻 UI, 后台监听, 定时器, 磁盘读取, 网络与遥测 API; `package.json` 不得出现 `keybindings` / `views` / `viewsContainers` / `menus` / `activationEvents` / `extensionDependencies` / 非空 `dependencies` / `commands[].enablement`. 最后一项专门防止 §5.2 那个坑再次出现.
+4. **静态负向检查** —— `src/` 不得出现常驻 UI, 后台监听, 定时器, 磁盘读取, 网络与遥测 API; `package.json` 不得出现 `views` / `viewsContainers` / `menus` / `activationEvents` / `extensionDependencies` / 非空 `dependencies` / `commands[].enablement`. 最后一项专门防止 §5.2 那个坑再次出现. 同时正向断言 `contributes.keybindings` 与 §5.2 一致: 有且只有 insert 的 `alt+l` 一条, `when` 与命令名都对得上.
 5. **打包** —— `vsce package` 会触发 `vscode:prepublish` 做生产构建, 无需另外 compile.
 6. **Release 说明** —— 从 `CHANGELOG.md` 中抽取 `## <version>` 小节作为 Release body; 缺失时只告警, 不阻断发布.
 

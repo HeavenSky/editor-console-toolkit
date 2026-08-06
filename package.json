@@ -50,6 +50,13 @@
         "category": "%category%"
       }
     ],
+    "keybindings": [
+      {
+        "command": "editorConsoleToolkit.insertConsoleLog",
+        "key": "alt+l",
+        "when": "editorTextFocus && !editorReadonly"
+      }
+    ],
     "configuration": {
       "title": "Editor Console Toolkit",
       "properties": {

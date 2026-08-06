@@ -14,8 +14,9 @@ Initial release.
 - Multi-cursor support. Every change made by one command invocation is a single undo step, and the document is never saved or formatted automatically.
 - Generated logs carry a short ownership marker (`// ect:v1`) so the extension only ever removes its own logs, and keeps removing them after the prefix is changed.
 - UI available in English and 简体中文, following the VS Code display language.
+- Default keybinding `Alt+L` for **Insert Console Log**, limited to `editorTextFocus && !editorReadonly`.
 
 ### Notes
 
-- No default keybindings are contributed. Bind the three commands yourself in Keyboard Shortcuts.
+- Only **Insert Console Log** has a default keybinding; bind the other two commands yourself in Keyboard Shortcuts.
 - The extension has no runtime dependencies, no telemetry, no network access and no background listeners. It activates only when one of its two commands runs.

@@ -24,7 +24,17 @@ const FORBIDDEN_APIS = [
 ];
 
 /** 清单里一旦出现就说明插件不再是"纯命令式". */
-const FORBIDDEN_MANIFEST_KEYS = ['keybindings', 'views', 'viewsContainers', 'menus'];
+const FORBIDDEN_MANIFEST_KEYS = ['views', 'viewsContainers', 'menus'];
+
+/**
+ * 默认快捷键契约: 只给最高频的 insert 一个默认键, 另两条命令刻意留空由用户自己绑,
+ * 因此这里既钉住按键值, 也钉住"不得出现额外绑定".
+ */
+const EXPECTED_KEYBINDINGS = {
+  'editorConsoleToolkit.insertConsoleLog': 'alt+l',
+};
+
+const EXPECTED_WHEN = 'editorTextFocus && !editorReadonly';
 
 function collectTsFiles(dir) {
   const found = [];
@@ -64,6 +74,40 @@ export function checks(root) {
       if (Object.keys(pkg.dependencies ?? {}).length > 0) problems.push('dependencies 必须为空');
       if ((pkg.contributes?.commands ?? []).some((command) => command.enablement)) {
         problems.push('commands[].enablement 不应存在');
+      }
+      return problems;
+    },
+
+    '默认快捷键与命令一一对应': () => {
+      const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+      const problems = [];
+      const bindings = pkg.contributes?.keybindings ?? [];
+      const seen = new Set();
+
+      for (const binding of bindings) {
+        const expected = EXPECTED_KEYBINDINGS[binding.command];
+        if (!expected) {
+          problems.push(`keybindings 出现契约外的绑定: ${binding.command}`);
+          continue;
+        }
+        if (seen.has(binding.command)) problems.push(`keybindings 重复绑定: ${binding.command}`);
+        seen.add(binding.command);
+        if (binding.key !== expected) {
+          problems.push(`${binding.command} 的按键应为 ${expected}, 实际 ${binding.key}`);
+        }
+        if (binding.when !== EXPECTED_WHEN) {
+          problems.push(`${binding.command} 的 when 应为 ${EXPECTED_WHEN}, 实际 ${binding.when}`);
+        }
+      }
+
+      for (const command of Object.keys(EXPECTED_KEYBINDINGS)) {
+        if (!seen.has(command)) problems.push(`命令缺少默认快捷键: ${command}`);
+      }
+
+      // 每条快捷键都必须指向真实注册的命令, 否则按下去是空操作。
+      const declared = new Set((pkg.contributes?.commands ?? []).map((command) => command.command));
+      for (const command of Object.keys(EXPECTED_KEYBINDINGS)) {
+        if (!declared.has(command)) problems.push(`contributes.commands 缺少命令: ${command}`);
       }
       return problems;
     },
