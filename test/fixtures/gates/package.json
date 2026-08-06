@@ -1,0 +1,19 @@
+{
+  "name": "gates-fixture",
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "editorConsoleToolkit.insertConsoleLog",
+        "title": "Insert Console Log"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "editorConsoleToolkit.insertConsoleLog",
+        "key": "alt+l",
+        "when": "editorTextFocus && !editorReadonly"
+      }
+    ]
+  }
+}

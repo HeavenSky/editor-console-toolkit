@@ -1,30 +1,39 @@
 /**
- * Editor Console Toolkit 专属门禁: 保证产物里没有常驻 UI, 后台监听, 磁盘读取, 网络与遥测。
+ * Editor Console Toolkit 专属门禁: 钉住各功能域各自的产品承诺。
  *
- * 这是本插件的产品承诺 (纯命令式, 零后台开销), 因此用静态负向检查钉住,
- * 而不是靠 review 记得。
+ * 插件有两个功能域, 承诺不同, 所以禁止清单按目录分级:
+ * - console 命令域 (`src/` 下除 `src/ports/`): 纯命令式, 零后台开销 —— 不得有常驻 UI,
+ *   监听器, 计时器与磁盘读取;
+ * - ports 视图域 (`src/ports/`): 本身就是常驻 TreeView + 轮询刷新, 上述 API 是其实现所需,
+ *   因此在该目录放行, 但网络与遥测仍然全局禁止。
+ *
+ * 分级而不是整体放开, 是为了防止日后无意给 console 命令加上监听器或计时器。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
-/** 一旦出现就说明引入了常驻开销或外部通信。 */
-const FORBIDDEN_APIS = [
-  'createStatusBarItem',
-  'createTreeView',
-  'registerTreeDataProvider',
-  'registerWebviewViewProvider',
+/** 任何目录出现都说明引入了外部通信或跨文档副作用。 */
+const GLOBAL_FORBIDDEN = [
   'onDidChangeTextDocument',
   'onDidChangeActiveTextEditor',
-  'onDidChangeConfiguration',
-  'setInterval',
-  'setTimeout',
-  'readFileSync',
   'axios',
   'telemetry',
 ];
 
-/** 清单里一旦出现就说明插件不再是"纯命令式". */
-const FORBIDDEN_MANIFEST_KEYS = ['views', 'viewsContainers', 'menus'];
+/** 只在 console 命令域禁止; ports 视图域按设计需要这些 API。 */
+const CONSOLE_ONLY_FORBIDDEN = [
+  'createStatusBarItem',
+  'createTreeView',
+  'registerTreeDataProvider',
+  'registerWebviewViewProvider',
+  'onDidChangeConfiguration',
+  'setInterval',
+  'setTimeout',
+  'readFileSync',
+];
+
+/** 放行 `CONSOLE_ONLY_FORBIDDEN` 的目录, 相对 `src/`。 */
+const RELAXED_DIRS = ['ports'];
 
 /**
  * 默认快捷键契约: 只给最高频的 insert 一个默认键, 另两条命令刻意留空由用户自己绑,
@@ -46,14 +55,28 @@ function collectTsFiles(dir) {
   return found;
 }
 
+/**
+ * 该文件是否位于放行目录内。
+ *
+ * 按路径分段比较而不是字符串前缀: `src/portsomething/` 不应被 `ports` 放行。
+ */
+function isRelaxed(srcDir, file) {
+  const segments = relative(srcDir, file).split(sep);
+  return RELAXED_DIRS.includes(segments[0]);
+}
+
 export function checks(root) {
   return {
     'src 未使用被禁止的 API': () => {
       const problems = [];
-      for (const file of collectTsFiles(join(root, 'src'))) {
+      const srcDir = join(root, 'src');
+      for (const file of collectTsFiles(srcDir)) {
+        const forbidden = isRelaxed(srcDir, file)
+          ? GLOBAL_FORBIDDEN
+          : [...GLOBAL_FORBIDDEN, ...CONSOLE_ONLY_FORBIDDEN];
         const lines = readFileSync(file, 'utf8').split('\n');
         lines.forEach((line, index) => {
-          for (const api of FORBIDDEN_APIS) {
+          for (const api of forbidden) {
             if (line.includes(api)) {
               problems.push(`${file.slice(root.length + 1)}:${index + 1} 使用了被禁止的 ${api}`);
             }
@@ -66,10 +89,7 @@ export function checks(root) {
     '清单未出现被禁止项': () => {
       const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
       const problems = [];
-      for (const key of FORBIDDEN_MANIFEST_KEYS) {
-        if (pkg.contributes?.[key]) problems.push(`contributes.${key} 不应存在`);
-      }
-      if (pkg.activationEvents) problems.push('activationEvents 不应存在 (命令贡献点已隐含激活)');
+      if (pkg.activationEvents) problems.push('activationEvents 不应存在 (命令与视图贡献点已隐含激活)');
       if (pkg.extensionDependencies) problems.push('extensionDependencies 不应存在');
       if (Object.keys(pkg.dependencies ?? {}).length > 0) problems.push('dependencies 必须为空');
       if ((pkg.contributes?.commands ?? []).some((command) => command.enablement)) {
