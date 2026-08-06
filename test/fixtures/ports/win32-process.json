@@ -1,0 +1,1 @@
+[{"ProcessId":880,"ParentProcessId":720,"Name":"svchost.exe","CommandLine":"C:\\Windows\\system32\\svchost.exe -k RPCSS -p","UserName":"NETWORK SERVICE","Elapsed":"03-19:03:13"},{"ProcessId":41802,"ParentProcessId":41799,"Name":"node.exe","CommandLine":"\"C:\\Program Files\\nodejs\\node.exe\" vite --host, --port 5173","UserName":"sky","Elapsed":"00:12:33"}]

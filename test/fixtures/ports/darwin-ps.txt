@@ -1,0 +1,5 @@
+  428 03-19:03:13 /usr/libexec/rapportd
+  430 03-19:03:13 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter
+17135 02-02:32:04 /Applications/DBX.app/Contents/MacOS/dbx
+28187    19:03:04 /Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin)
+41802       12:33 node vite --host --port 5173
