@@ -2,7 +2,9 @@
 
 [![Marketplace](https://img.shields.io/visual-studio-marketplace/v/HeavenSky.editor-console-toolkit?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/HeavenSky.editor-console-toolkit)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.txt)
+
+**English** · [简体中文](./README.zh-cn.md)
 
 Two everyday chores, one extension, zero runtime dependencies.
 
@@ -12,8 +14,6 @@ Two everyday chores, one extension, zero runtime dependencies.
 | **Port Toolkit** | See which processes hold your local ports, tell them apart by where they were started, and terminate several at once. | Activity Bar |
 
 UI in English and 简体中文, following your VS Code display language.
-
-**[简体中文文档](README.zh-cn.md)**
 
 ---
 
@@ -39,7 +39,7 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 **Clean up before committing.** Run **Console Toolkit: Toggle All Console Logs** to comment out every log the extension generated in the file — run it again to bring them back. Nothing is ever deleted.
 
-**Free up a port.** Click the **Port Toolkit** icon in the Activity Bar, find the row with the `this workspace` marker, tick it and hit the 🗑 button in the view's title bar.
+**Free up a port.** Click the **Port Toolkit** icon in the Activity Bar, find the row in **Listening Processes** with the `this workspace` marker, tick it and hit the 🗑 button in the view's title bar.
 
 ---
 
@@ -190,7 +190,7 @@ Everything else gets inserted after the enclosing statement. If a placement is n
 
 ## Port Toolkit
 
-Click the **Port Toolkit** icon in the Activity Bar. The view lists every process listening on a local port — **one row per process, not one row per port**:
+Click the **Port Toolkit** icon in the Activity Bar. The **Listening Processes** view lists every process listening on a local port — **one row per process, not one row per port**:
 
 ```text
 LISTENING PROCESSES                       🗑  🔍  ⌫  ⧩  ⟳
@@ -310,8 +310,8 @@ For Port Toolkit, the next step is verifying Linux and Windows on real machines.
 
 ## Release notes
 
-See [CHANGELOG.md](CHANGELOG.md).
+See [CHANGELOG.md](./CHANGELOG.md).
 
 ## License
 
-[MIT](LICENSE.txt)
+[MIT](./LICENSE.txt)

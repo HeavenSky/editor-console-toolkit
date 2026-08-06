@@ -2,18 +2,22 @@
 
 [![Marketplace](https://img.shields.io/visual-studio-marketplace/v/HeavenSky.editor-console-toolkit?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/HeavenSky.editor-console-toolkit)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.txt)
+
+[English](./README.md) · **简体中文**
 
 两件日常琐事, 一个插件, 零运行时依赖.
 
 | | 做什么 | 在哪用 |
 | --- | --- | --- |
-| **Console Toolkit** | 为光标处的表达式插入调试日志, 再一键把它 (或整个文件的日志) 关掉. 支持 15 种语言. | 命令面板, `Alt+L` |
-| **Port Toolkit** | 查看哪些进程占着本机端口, 按启动位置区分它们, 并一次终止多个. | 活动栏 |
+| **控制台工具箱** (Console Toolkit) | 为光标处的表达式插入调试日志, 再一键把它 (或整个文件的日志) 关掉. 支持 15 种语言. | 命令面板, `Alt+L` |
+| **端口工具箱** (Port Toolkit) | 查看哪些进程占着本机端口, 按启动位置区分它们, 并一次终止多个. | 活动栏 |
 
 界面提供英文与简体中文, 跟随 VS Code 的显示语言.
 
-**[English](README.md)**
+> **本文按中文界面书写.** 命令名与视图名会跟随 VS Code 的显示语言, 下文表格里括号内给出英文界面下的名称, 便于对照. 命令 ID 与配置项 key 不随语言变化.
+>
+> 插件市场页面只渲染英文版 README, 不会按访问者的语言自动切换 — 这是市场平台的限制.
 
 ---
 
@@ -37,29 +41,29 @@ const user = getUser();
 console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 ```
 
-**提交前清理.** 执行 **Console Toolkit: Toggle All Console Logs**, 把本插件在当前文件生成的日志全部注释掉 — 再执行一次就恢复. 任何时候都不会真的删除.
+**提交前清理.** 执行 **控制台工具箱: 切换全部 Console 日志**, 把本插件在当前文件生成的日志全部注释掉 — 再执行一次就恢复. 任何时候都不会真的删除.
 
-**释放一个端口.** 点开活动栏的 **Port Toolkit** 图标, 找到带 `本工作区` 标记的那一行, 勾上它, 然后点视图标题栏的 🗑 按钮.
+**释放一个端口.** 点开活动栏的 **端口工具箱** 图标, 在 **监听中的进程** 列表里找到带 `本工作区` 标记的那一行, 勾上它, 然后点视图标题栏的 🗑 按钮.
 
 ---
 
-## Console Toolkit
+## 控制台工具箱 (Console Toolkit)
 
 ### 命令
 
-在命令面板输入 `Console Toolkit` 即可找到全部三条.
+在命令面板输入 `控制台工具箱` 即可找到全部三条.
 
 | 命令 | ID | 快捷键 |
 | --- | --- | --- |
-| Insert Console Log | `editorConsoleToolkit.insertConsoleLog` | `Alt+L` |
-| Toggle Console Log | `editorConsoleToolkit.toggleConsoleLog` | — |
-| Toggle All Console Logs | `editorConsoleToolkit.toggleAllConsoleLogs` | — |
+| 插入 Console 日志 (Insert Console Log) | `editorConsoleToolkit.insertConsoleLog` | `Alt+L` |
+| 切换 Console 日志 (Toggle Console Log) | `editorConsoleToolkit.toggleConsoleLog` | — |
+| 切换全部 Console 日志 (Toggle All Console Logs) | `editorConsoleToolkit.toggleAllConsoleLogs` | — |
 
-**Insert Console Log** 在所属语句的下一行写入日志. 重复执行第二次不会再插入.
+**插入 Console 日志** 在所属语句的下一行写入日志. 重复执行第二次不会再插入.
 
-**Toggle Console Log** 没有日志时插入, 已有时移除. 光标停在日志行本身时同样有效, 这是删掉一条日志最快的方式.
+**切换 Console 日志** 没有日志时插入, 已有时移除. 光标停在日志行本身时同样有效, 这是删掉一条日志最快的方式.
 
-**Toggle All Console Logs** 把当前文件里生成的日志全部注释掉, 下次执行再取消注释:
+**切换全部 Console 日志** 把当前文件里生成的日志全部注释掉, 下次执行再取消注释:
 
 ```js
 // 执行前
@@ -83,7 +87,7 @@ const user = getUser();
 
 ### 快捷键
 
-只有 **Insert Console Log** 带默认快捷键, 且限定在 `editorTextFocus && !editorReadonly`, 因此不会在只读编辑器外触发. 另两条刻意不给默认键, 避免与你现有的键位冲突.
+只有 **插入 Console 日志** 带默认快捷键, 且限定在 `editorTextFocus && !editorReadonly`, 因此不会在只读编辑器外触发. 另两条刻意不给默认键, 避免与你现有的键位冲突.
 
 在 `keybindings.json` 里自己绑定 — 重新绑定或取消 `Alt+L` 也是同样的写法:
 
@@ -171,7 +175,7 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 - 标记里不含前缀, 所以改了 `editorConsoleToolkit.prefix` 也不会让已插入的日志变成孤儿.
 - 移除还要求日志紧跟在目标语句的下一行, 因此不同位置上同名变量的两条日志不会被搞混.
 
-发布代码前把标记清掉 — 用切换命令关掉, 或者全工作区搜索 `ect:v1`. 标记在被注释后依然存在, **Toggle All Console Logs** 正是靠它找回你之前注释掉的日志.
+发布代码前把标记清掉 — 用切换命令关掉, 或者全工作区搜索 `ect:v1`. 标记在被注释后依然存在, **切换全部 Console 日志** 正是靠它找回你之前注释掉的日志.
 
 ### 什么情况下什么都不会发生
 
@@ -188,9 +192,9 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 ---
 
-## Port Toolkit
+## 端口工具箱 (Port Toolkit)
 
-点开活动栏的 **Port Toolkit** 图标. 视图列出每个正在监听本机端口的进程 — **一行一个进程, 而不是一行一个端口**:
+点开活动栏的 **端口工具箱** 图标. **监听中的进程** 视图列出每个正在监听本机端口的进程 — **一行一个进程, 而不是一行一个端口**:
 
 ```text
 监听中的进程                              🗑  🔍  ⌫  ⧩  ⟳
@@ -224,18 +228,18 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 ### 命令
 
-在命令面板输入 `Port Toolkit`. 视图标题栏提供同样的操作. 这些命令**都不带默认快捷键**.
+在命令面板输入 `端口工具箱`. 视图标题栏提供同样的操作. 这些命令**都不带默认快捷键**.
 
 | 命令 | ID | 位置 |
 | --- | --- | --- |
-| Kill Checked Processes | `editorConsoleToolkit.ports.killSelected` | 🗑 标题栏, 命令面板 |
-| Search Ports | `editorConsoleToolkit.ports.search` | 🔍 标题栏, 命令面板 |
-| Clear Port Search | `editorConsoleToolkit.ports.clearSearch` | ⌫ 标题栏, 命令面板 |
-| Toggle System Processes | `editorConsoleToolkit.ports.toggleSystemProcesses` | ⧩ 标题栏, 命令面板 |
-| Refresh Ports | `editorConsoleToolkit.ports.refresh` | ⟳ 标题栏, 命令面板 |
-| Kill Process | `editorConsoleToolkit.ports.killOne` | 行内悬停, 右键菜单 |
+| 终止已勾选的进程 (Kill Checked Processes) | `editorConsoleToolkit.ports.killSelected` | 🗑 标题栏, 命令面板 |
+| 搜索端口 (Search Ports) | `editorConsoleToolkit.ports.search` | 🔍 标题栏, 命令面板 |
+| 清除端口搜索 (Clear Port Search) | `editorConsoleToolkit.ports.clearSearch` | ⌫ 标题栏, 命令面板 |
+| 切换系统进程的显示 (Toggle System Processes) | `editorConsoleToolkit.ports.toggleSystemProcesses` | ⧩ 标题栏, 命令面板 |
+| 刷新端口列表 (Refresh Ports) | `editorConsoleToolkit.ports.refresh` | ⟳ 标题栏, 命令面板 |
+| 终止进程 (Kill Process) | `editorConsoleToolkit.ports.killOne` | 行内悬停, 右键菜单 |
 
-**批量终止.** 想勾多少行就勾多少行, 然后执行 **Kill Checked Processes**. 会弹出模态确认框, 逐个列出将被终止的进程, 结束后再汇总实际终止了几个. 勾选状态不会被自动刷新清掉, 所以你可以慢慢挑.
+**批量终止.** 想勾多少行就勾多少行, 然后执行 **终止已勾选的进程**. 会弹出模态确认框, 逐个列出将被终止的进程, 结束后再汇总实际终止了几个. 勾选状态不会被自动刷新清掉, 所以你可以慢慢挑.
 
 **搜索** 匹配进程名, 完整命令行, PID, 工作目录以及任一端口号 — `5173`, `vite` 与 `~/repo/web` 都能命中.
 
@@ -294,14 +298,14 @@ macOS, Linux 与 Windows.
 | `Alt+L` 没反应 | 该绑定要求 `editorTextFocus && !editorReadonly`. 在 **键盘快捷方式** 里搜 `alt+l` 看是否被占用. |
 | 提示 "Console Toolkit 尚未支持该语言" | 该语言还没有适配器. 见 [支持的语言](#支持的语言) 与 [路线图](#路线图). |
 | 某条日志切换不掉 | 它没有 `ect:v1` 标记, 或者已经不在目标语句的紧邻下一行. 手动删掉即可. |
-| 端口视图是空的 | 可能所有监听项都被当作系统进程过滤掉了. 执行 **Toggle System Processes**, 或者调低 `systemPortMax`. |
+| 端口视图是空的 | 可能所有监听项都被当作系统进程过滤掉了. 执行 **切换系统进程的显示**, 或者调低 `systemPortMax`. |
 | 某一行显示无法终止 | 它是你的编辑器, 编辑器自身的进程, 或属于其他用户. 见 [终止是怎么做的](#终止是怎么做的). |
 | 出现 "端口扫描失败" 一行 | 系统拒绝了端口查询, 该行会显示系统给出的原因. |
 | 端口列表看起来是旧的 | 视图只在可见时刷新. 点 ⟳, 或检查 `refreshInterval` 是不是 `0`. |
 
 ## 路线图
 
-Console Toolkit 的语言支持分批推进, 因为每种语言都需要各自的处理才能保证安全, 而不是一套通用实现.
+控制台工具箱的语言支持分批推进, 因为每种语言都需要各自的处理才能保证安全, 而不是一套通用实现.
 
 - **接下来** — shell / zsh, PowerShell, Perl, Go, C, C++, Scala, Groovy, Clojure, R; Vue, Svelte 与 Astro 的 `<script>` 块; notebook 单元格.
 - **再往后** — SQL. 各方言没有统一的日志构造, 因此需要一个显式的方言配置, 而不是有风险的猜测.
@@ -310,8 +314,8 @@ Port Toolkit 的下一步是在真机上验证 Linux 与 Windows.
 
 ## 版本记录
 
-见 [CHANGELOG.md](CHANGELOG.md).
+见 [CHANGELOG.md](./CHANGELOG.md).
 
 ## 许可证
 
-[MIT](LICENSE.txt)
+[MIT](./LICENSE.txt)

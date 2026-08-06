@@ -17,8 +17,10 @@ const OUT_DIR = join(ROOT, 'artifacts');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const target = join(OUT_DIR, `${pkg.name}-${pkg.version}.vsix`);
 
-// vsce 需要 baseContentUrl/baseImagesUrl 才能把 README 里的相对链接改写成绝对地址。
-// 从 package.json 的 repository 推导, 避免仓库地址在两处各写一遍。
+// NEVER 显式传 --baseContentUrl / --baseImagesUrl: vsce 会从 package.json 的 repository
+// 自动推导出正确的一对基址 (链接 `/blob/HEAD`, 图片 `/raw/HEAD`), 而显式传参会抹掉这个区分 ——
+// 只传 baseContentUrl 时 baseImagesUrl 也会回退到它, 结果文档链接指向 raw 纯文本。
+// 这里仍校验 repository, 让地址不合规时立刻失败, 而不是等 vsce 遇到相对链接才报错。
 const repoUrl = (pkg.repository?.url ?? pkg.repository ?? '')
   .replace(/^git\+/, '')
   .replace(/\.git$/, '');
@@ -26,7 +28,6 @@ if (!/^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(repoUrl)) {
   console.error(`package.json 的 repository.url 不是预期的 GitHub 地址: ${repoUrl || '(空)'}`);
   process.exit(1);
 }
-const BASE = `${repoUrl}/raw/HEAD/`;
 
 // ── 推导允许清单 ────────────────────────────────────────────
 const allowed = deriveAllowlist({
@@ -47,10 +48,6 @@ execFileSync(
     target,
     // 产物由 esbuild 打成单文件, 不需要 vsce 解析并打包依赖树。
     '--no-dependencies',
-    '--baseContentUrl',
-    BASE,
-    '--baseImagesUrl',
-    BASE,
   ],
   { cwd: ROOT, stdio: 'inherit' },
 );
