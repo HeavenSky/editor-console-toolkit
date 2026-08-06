@@ -29,7 +29,11 @@
     "debug",
     "toggle log",
     "multi language",
-    "developer tools"
+    "developer tools",
+    "port",
+    "kill process",
+    "lsof",
+    "netstat"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -48,8 +52,97 @@
         "command": "editorConsoleToolkit.toggleAllConsoleLogs",
         "title": "%command.toggleAllConsoleLogs%",
         "category": "%category%"
+      },
+      {
+        "command": "editorConsoleToolkit.ports.refresh",
+        "title": "%command.ports.refresh%",
+        "category": "%category.ports%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "editorConsoleToolkit.ports.killSelected",
+        "title": "%command.ports.killSelected%",
+        "category": "%category.ports%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "editorConsoleToolkit.ports.killOne",
+        "title": "%command.ports.killOne%",
+        "category": "%category.ports%",
+        "icon": "$(close)"
+      },
+      {
+        "command": "editorConsoleToolkit.ports.toggleSystemProcesses",
+        "title": "%command.ports.toggleSystemProcesses%",
+        "category": "%category.ports%",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "editorConsoleToolkit.ports.search",
+        "title": "%command.ports.search%",
+        "category": "%category.ports%",
+        "icon": "$(search)"
+      },
+      {
+        "command": "editorConsoleToolkit.ports.clearSearch",
+        "title": "%command.ports.clearSearch%",
+        "category": "%category.ports%",
+        "icon": "$(clear-all)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "editorConsoleToolkitPorts",
+          "title": "%view.ports.container%",
+          "icon": "media/ports.svg"
+        }
+      ]
+    },
+    "views": {
+      "editorConsoleToolkitPorts": [
+        {
+          "id": "editorConsoleToolkit.ports.view",
+          "name": "%view.ports.name%"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "editorConsoleToolkit.ports.killSelected",
+          "when": "view == editorConsoleToolkit.ports.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "editorConsoleToolkit.ports.search",
+          "when": "view == editorConsoleToolkit.ports.view",
+          "group": "navigation@2"
+        },
+        {
+          "command": "editorConsoleToolkit.ports.clearSearch",
+          "when": "view == editorConsoleToolkit.ports.view",
+          "group": "navigation@3"
+        },
+        {
+          "command": "editorConsoleToolkit.ports.toggleSystemProcesses",
+          "when": "view == editorConsoleToolkit.ports.view",
+          "group": "navigation@4"
+        },
+        {
+          "command": "editorConsoleToolkit.ports.refresh",
+          "when": "view == editorConsoleToolkit.ports.view",
+          "group": "navigation@5"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "editorConsoleToolkit.ports.killOne",
+          "when": "view == editorConsoleToolkit.ports.view && viewItem == portProcess",
+          "group": "inline"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "editorConsoleToolkit.insertConsoleLog",
@@ -66,6 +159,37 @@
           "maxLength": 80,
           "scope": "language-overridable",
           "description": "%config.prefix%"
+        },
+        "editorConsoleToolkit.ports.refreshInterval": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 0,
+          "maximum": 600000,
+          "description": "%config.ports.refreshInterval%"
+        },
+        "editorConsoleToolkit.ports.killTimeout": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 0,
+          "maximum": 60000,
+          "description": "%config.ports.killTimeout%"
+        },
+        "editorConsoleToolkit.ports.hideSystemProcesses": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.ports.hideSystemProcesses%"
+        },
+        "editorConsoleToolkit.ports.systemPortMax": {
+          "type": "number",
+          "default": 1024,
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "%config.ports.systemPortMax%"
+        },
+        "editorConsoleToolkit.ports.includeUdp": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.ports.includeUdp%"
         }
       }
     }

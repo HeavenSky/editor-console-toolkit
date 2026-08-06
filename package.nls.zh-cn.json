@@ -1,8 +1,22 @@
 {
-  "extension.description": "为多种编程语言插入并安全切换调试输出语句.",
+  "extension.description": "为多种编程语言插入并安全切换调试输出语句, 并管理占用本机端口的进程.",
   "category": "控制台工具箱",
   "command.insertConsoleLog": "插入 Console 日志",
   "command.toggleConsoleLog": "切换 Console 日志",
   "command.toggleAllConsoleLogs": "切换全部 Console 日志",
-  "config.prefix": "生成的 Console 日志消息中包含的前缀."
+  "config.prefix": "生成的 Console 日志消息中包含的前缀.",
+  "category.ports": "端口工具箱",
+  "command.ports.refresh": "刷新端口列表",
+  "command.ports.killSelected": "终止已勾选的进程",
+  "command.ports.killOne": "终止进程",
+  "command.ports.toggleSystemProcesses": "切换系统进程的显示",
+  "command.ports.search": "搜索端口",
+  "command.ports.clearSearch": "清除端口搜索",
+  "view.ports.container": "端口工具箱",
+  "view.ports.name": "监听中的进程",
+  "config.ports.refreshInterval": "视图可见时重新扫描的间隔, 单位毫秒. 设为 0 则只在手动触发时刷新.",
+  "config.ports.killTimeout": "发出 SIGTERM 后等待多久升级为 SIGKILL, 单位毫秒.",
+  "config.ports.hideSystemProcesses": "隐藏位于系统目录下, 或全部监听端口都不超过系统端口上限的进程.",
+  "config.ports.systemPortMax": "视为系统端口的最大端口号. 只有当一个进程的全部监听端口都不超过此值时才会被隐藏.",
+  "config.ports.includeUdp": "同时列出 UDP 端点, 而不只是 TCP 监听端口."
 }

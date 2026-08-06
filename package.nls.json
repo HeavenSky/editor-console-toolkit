@@ -1,8 +1,22 @@
 {
-  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages.",
+  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages, and manage the processes listening on your local ports.",
   "category": "Console Toolkit",
   "command.insertConsoleLog": "Insert Console Log",
   "command.toggleConsoleLog": "Toggle Console Log",
   "command.toggleAllConsoleLogs": "Toggle All Console Logs",
-  "config.prefix": "Prefix included in generated console log messages."
+  "config.prefix": "Prefix included in generated console log messages.",
+  "category.ports": "Port Toolkit",
+  "command.ports.refresh": "Refresh Ports",
+  "command.ports.killSelected": "Kill Checked Processes",
+  "command.ports.killOne": "Kill Process",
+  "command.ports.toggleSystemProcesses": "Toggle System Processes",
+  "command.ports.search": "Search Ports",
+  "command.ports.clearSearch": "Clear Port Search",
+  "view.ports.container": "Port Toolkit",
+  "view.ports.name": "Listening Processes",
+  "config.ports.refreshInterval": "How often the Listening Processes view rescans, in milliseconds, while the view is visible. Set to 0 to refresh only on demand.",
+  "config.ports.killTimeout": "How long to wait after SIGTERM before escalating to SIGKILL, in milliseconds.",
+  "config.ports.hideSystemProcesses": "Hide processes that live in system directories or only listen on ports at or below the system port maximum.",
+  "config.ports.systemPortMax": "Highest port number treated as a system port. A process is only hidden when every port it listens on is at or below this value.",
+  "config.ports.includeUdp": "Also list UDP endpoints, not just TCP listeners."
 }

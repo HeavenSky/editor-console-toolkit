@@ -24,6 +24,7 @@ package-lock.json
 !out/**/*.js
 !l10n/**
 !media/icon.png
+!media/ports.svg
 !package.nls.json
 !package.nls.zh-cn.json
 !LICENSE.txt
