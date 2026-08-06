@@ -18,19 +18,11 @@ UI in English and 简体中文, following your VS Code display language.
 ## Install
 
 - **VS Code** — search `Editor Console Toolkit` in the Extensions view, or run `ext install HeavenSky.editor-console-toolkit` in the Command Palette.
-- **Cursor, Windsurf, VSCodium and other derivatives** — download the `.vsix` from the [latest GitHub release](https://github.com/HeavenSky/editor-console-toolkit/releases) and run **Extensions: Install from VSIX…**.
+- **Other VS Code–compatible editors** — download the `.vsix` from the [latest GitHub release](https://github.com/HeavenSky/editor-console-toolkit/releases) and run **Extensions: Install from VSIX…**.
 
 ### Requirements
 
-| | Requirement |
-| --- | --- |
-| Editor | VS Code `1.101.0` or newer |
-| Console Toolkit | nothing else |
-| Port Toolkit on macOS | `lsof` and `ps` (both ship with macOS) |
-| Port Toolkit on Linux | `ss` or `netstat`, plus `ps` |
-| Port Toolkit on Windows | `powershell.exe` |
-
-No runtime dependencies are bundled, and nothing is downloaded at runtime.
+VS Code `1.101.0` or newer. Nothing else to install: there are no bundled dependencies, nothing is downloaded at runtime, and Port Toolkit reads ports through tooling that already ships with macOS, Linux and Windows.
 
 ---
 
@@ -223,8 +215,8 @@ Expand a row — or hover it — for the rest:
 | --- | --- |
 | PID, PPID | process and parent process IDs |
 | User | the process owner |
-| Uptime | how long it has been running (elapsed time, not a locale-dependent timestamp) |
-| Working directory | resolved per process, abbreviated to `~` under your home directory |
+| Uptime | how long it has been running |
+| Working directory | where it was started from, abbreviated to `~` under your home directory |
 | Listening on | every endpoint, with protocol and bind address |
 | Command | the full command line, never truncated |
 
@@ -247,20 +239,20 @@ Type `Port Toolkit` in the Command Palette. The view's title bar carries the sam
 
 ### How termination works
 
-`SIGTERM` first, escalating to `SIGKILL` only if the process is still alive after `killTimeout`. A dev server that handles `SIGTERM` gets its chance to close sockets and clean up temporary files.
+The process is asked to shut down first (`SIGTERM`), and only force-killed (`SIGKILL`) if it is still alive after `killTimeout`. A dev server that handles shutdown gets its chance to close sockets and clean up temporary files.
 
 Four things it will not do:
 
-- **It will not touch child processes.** On Windows `taskkill` is invoked without `/T`.
-- **It will not terminate a process whose command line changed.** The command line is re-read immediately before any signal is sent. Between ticking a row and confirming, a process can exit and its PID be reused by something else — if the command line no longer matches, that row is skipped and reported as skipped rather than killed blindly.
-- **It can never terminate your editor.** At startup the extension walks the parent chain from its own extension host up to the editor's main process. Every process on that chain gets a lock icon, no checkbox and no terminate action. This comes from the live process tree rather than a list of process names, so it holds for VS Code, Cursor, Windsurf and any other derivative.
+- **It will not touch child processes.** Only the process on the row you ticked.
+- **It will not terminate a process whose command line changed.** The command line is re-read immediately before anything is sent. Between ticking a row and confirming, a process can exit and its PID be reused by something else — if the command line no longer matches, that row is skipped and reported as skipped rather than killed blindly.
+- **It can never terminate your editor.** The editor's own processes get a lock icon, no checkbox and no terminate action. This is worked out from the live process tree, so it holds for any VS Code–compatible editor.
 - **It will not try to elevate.** Processes owned by another user are listed and labelled, but cannot be terminated.
 
 ### Refresh behaviour
 
 The view rescans every `refreshInterval` milliseconds **only while it is visible**. Switch to another Activity Bar icon and the timer stops — there is no background scanning when you are not looking at it. Set `refreshInterval` to `0` to refresh only on demand.
 
-One scan is three fixed command invocations regardless of how many ports are open. If a scan fails, the view shows a single error row rather than raising a notification — with polling, one notification per cycle would bury the editor.
+A scan costs the same whether you have two ports open or fifty. If one fails, the view shows a single error row rather than raising a notification — with polling, one notification per cycle would bury the editor.
 
 ### Settings
 
@@ -276,13 +268,11 @@ A process counts as a system process when its executable lives in a system direc
 
 ### Platform support
 
-| Platform | How ports are read | Status |
-| --- | --- | --- |
-| macOS | `lsof` + `ps` | verified on real hardware |
-| Linux | `ss` (falls back to `netstat`) + `ps` + `/proc/<pid>/cwd` | ⚠️ parsers covered by fixture tests, **not yet verified on a real Linux machine** |
-| Windows | PowerShell `Get-NetTCPConnection` / `Get-NetUDPEndpoint` + `Get-CimInstance Win32_Process` | ⚠️ parsers covered by fixture tests, **not yet verified on a real Windows machine** |
+macOS, Linux and Windows.
 
-On Linux without root, `ss` cannot attribute a socket to a process. That row is still listed — port visible, owner marked unknown — instead of being dropped, so you at least know the port is taken.
+> ⚠️ Only macOS has been verified on real hardware so far. Linux and Windows support is implemented and covered by tests, but **has not yet been run on a real Linux or Windows machine** — please report anything that looks wrong.
+
+When the system will not say which process owns a socket — on Linux this happens without root — the row is still listed with the port visible and the owner marked unknown, rather than being dropped. You at least learn that the port is taken.
 
 ---
 
@@ -291,9 +281,9 @@ On Linux without root, `ss` cannot attribute a socket to a process. That row is 
 - **No telemetry, no network access.** Nothing about you or your code leaves your machine.
 - **No runtime dependencies.** The extension ships as a single bundled file.
 - **Console Toolkit is purely command-driven** — no listeners, no timers, no status bar item. It does nothing until you run one of its commands.
-- **Port Toolkit only works while you are watching it.** The scan timer exists only while its view is visible, and each scan is three short command invocations.
+- **Port Toolkit only works while you are watching it.** Its scan timer exists only while its view is visible.
 
-These are enforced by a static gate in the repository, not just by convention: the console modules are checked to contain no timer, listener or persistent-UI API at all.
+These are not just promises: the build fails if a timer, listener or persistent-UI API ever appears in the console side of the codebase.
 
 ## Troubleshooting
 
@@ -303,18 +293,18 @@ These are enforced by a static gate in the repository, not just by convention: t
 | "Console Toolkit does not support this language yet" | The language has no adapter yet. See [Supported languages](#supported-languages) and the [Roadmap](#roadmap). |
 | A log will not toggle off | It has no `ect:v1` marker, or it is no longer on the line directly after its target statement. Remove it by hand. |
 | The ports view is empty | Everything listening may be filtered as a system process. Run **Toggle System Processes**, or lower `systemPortMax`. |
-| A row says the process cannot be terminated | It is your editor, its ancestor, or owned by another user. See [How termination works](#how-termination-works). |
-| "Port scan failed" row | The platform tool is missing or refused to run — see [Requirements](#requirements). The row shows the underlying reason. |
+| A row says the process cannot be terminated | It is your editor, one of its own processes, or owned by another user. See [How termination works](#how-termination-works). |
+| "Port scan failed" row | The system refused the port lookup. The row shows the reason it gave. |
 | The port list looks stale | The view only refreshes while visible. Hit ⟳, or check that `refreshInterval` is not `0`. |
 
 ## Roadmap
 
-Console Toolkit language support ships in tiers, because import handling, format strings and dialects differ too much for one generic implementation.
+Console Toolkit language support ships in tiers, because each language needs its own handling to stay safe rather than one generic implementation.
 
-- **Tier 2** — shell / zsh, PowerShell and Perl (each needs its own safe-variable detection); Go (`fmt` import management); C and C++ (include management, format specifiers); Scala, Groovy, Clojure, R; Vue, Svelte and Astro via their `<script>` blocks; notebook cells.
-- **Tier 3** — SQL, which has no single logging construct: PL/pgSQL uses `RAISE NOTICE`, T-SQL uses `PRINT`, MySQL uses a debug `SELECT`, and plain SQLite has nothing equivalent. This needs an explicit dialect setting rather than a risky fallback.
+- **Next up** — shell / zsh, PowerShell, Perl, Go, C, C++, Scala, Groovy, Clojure, R; Vue, Svelte and Astro through their `<script>` blocks; notebook cells.
+- **Later** — SQL, which has no single logging construct across dialects and so will need an explicit dialect setting rather than a risky guess.
 
-For Port Toolkit, the next step is verifying the Linux and Windows scanners on real machines.
+For Port Toolkit, the next step is verifying Linux and Windows on real machines.
 
 ## Release notes
 
