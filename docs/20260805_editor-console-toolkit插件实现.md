@@ -221,7 +221,9 @@ editorConsoleToolkit.toggleConsoleLog
 editorConsoleToolkit.toggleAllConsoleLogs
 ```
 
-三条命令的 `title` 与 `category` 使用 `%...%` 占位符. 不声明 `menus`, `views`, `viewsContainers`, `activationEvents`, `extensionDependencies`.
+三条命令的 `title` 与 `category` 使用 `%...%` 占位符. 不声明 `activationEvents` 与 `extensionDependencies`.
+
+`views`, `viewsContainers` 与 `menus` **由 ports 功能域使用** (见 §5.4), 不再是禁止项; console 域自身不用它们.
 
 `contributes.keybindings` 只声明一条: `editorConsoleToolkit.insertConsoleLog` 绑 `alt+l`, `when` 为 `editorTextFocus && !editorReadonly`. 另两条命令刻意不给默认键, 减少与用户既有键位冲突的面积.
 
@@ -258,6 +260,42 @@ editorConsoleToolkit.toggleAllConsoleLogs
 - 每次命令执行时读取 `vscode.workspace.getConfiguration('editorConsoleToolkit', { uri: document.uri, languageId: document.languageId }).get<string>('prefix', DEFAULT_PREFIX)`. 必须同时传 `uri` 和 `languageId`, 否则语言级覆盖不生效. 不缓存, 不注册 `onDidChangeConfiguration`, 因此改设置立即生效, 无需 Reload Window.
 - 运行时不校验不报错: 读到值后剥离 `\r`, `\n` 与 C0/C1 控制字符, 其余原样保留(含可见空格). 空串合法, 表示不加前缀. `maxLength` 只作为 Settings UI 提示, 运行时不截断不拒绝.
 - 各适配器负责把清洗后的 prefix 转义进本语言的字符串字面量.
+
+### 5.4 Ports 功能域的清单契约
+
+完整设计契约见 `.ai-ctx/plans/20260806_端口与进程管理能力集成.md`, 本节只登记清单层面的事实.
+
+命令 (类别占位符 `%category.ports%`):
+
+```text
+editorConsoleToolkit.ports.refresh
+editorConsoleToolkit.ports.killSelected
+editorConsoleToolkit.ports.killOne
+editorConsoleToolkit.ports.toggleSystemProcesses
+editorConsoleToolkit.ports.search
+editorConsoleToolkit.ports.clearSearch
+```
+
+视图与菜单:
+
+- `contributes.viewsContainers.activitybar` 一项, id `editorConsoleToolkitPorts`, 图标 `media/ports.svg`.
+- `contributes.views` 一项, id `editorConsoleToolkit.ports.view`.
+- `contributes.menus."view/title"` 五项 (killSelected, search, clearSearch, toggleSystemProcesses, refresh), 全部限定 `view == editorConsoleToolkit.ports.view`.
+- `contributes.menus."view/item/context"` 一项 (killOne), 限定 `viewItem == portProcess` —— 因此受保护项 (`portProtected`) 与详情行 (`portDetail`) 拿不到终止动作.
+
+配置, 均为 `editorConsoleToolkit.ports.*`:
+
+| key | 类型 | 默认 |
+| --- | --- | --- |
+| `refreshInterval` | number | 5000, `0` 关闭自动刷新 |
+| `killTimeout` | number | 3000 |
+| `hideSystemProcesses` | boolean | true |
+| `systemPortMax` | number | 1024 |
+| `includeUdp` | boolean | false |
+
+ports 命令**一律不给默认快捷键**: §10.2 的快捷键契约会把 `EXPECTED_KEYBINDINGS` 之外的任何绑定判为失败, 而该契约只登记 insert 的 `alt+l`.
+
+`media/ports.svg` 是活动栏用的单色轮廓图标, **不纳入** `scripts/icon-spec.mjs` 的生成体系 —— 那套逻辑产出的是市场用的彩色品牌图标, 两者无关. 它进入 VSIX 依靠 `scripts/lib/vsix-allowlist.mjs` 从 `contributes.viewsContainers[].icon` 推导, 而不是硬编码路径.
 
 ## 6. 语言支持策略
 
@@ -529,7 +567,9 @@ export type CommandMode = SelectionMode | 'toggle-all'; // toggle-all 作用于�
 
 ## 8. 激活和运行链路
 
-`src/extension.ts` 只注册三条命令并放入 `context.subscriptions`. 没有监听器, 计时器, 状态项或后台任务, 因此不导出有实际工作的 `deactivate`.
+`src/extension.ts` 注册 console 域的三条命令, 再创建 ports 视图并注册其六条命令, 全部放入 `context.subscriptions`.
+
+**console 域仍然是纯命令式的**: 没有监听器, 计时器或状态项.
 
 ```text
 Command Palette / 用户自绑快捷键
@@ -541,11 +581,27 @@ Command Palette / 用户自绑快捷键
   -> 需要时显示一条 warning
 ```
 
+**ports 域是常驻视图**, 激活链路不同:
+
+```text
+点开活动栏的 Port Toolkit 图标
+  -> VS Code 按 contributes.views 隐式激活扩展 (见下)
+  -> createPortsView: 建 TreeView, 算一次编辑器祖先链, 首次扫描
+  -> 视图可见期间按 refreshInterval 轮询; 不可见立即 clearInterval
+  -> 每次扫描 = 3 次固定子进程调用, 与端口数量无关
+  -> 勾选态由 provider 自存并在重扫后回填
+```
+
+`contributes.views` **不需要声明 `activationEvents`**: 自 VS Code 1.74.0 起视图贡献点隐式生成 `onView` 激活事件, 本仓库 `engines.vscode` 为 `^1.101.0`, 因此 §10.2 里"清单不得出现 `activationEvents`"这条断言依然成立.
+
+**为何仍然不需要 `deactivate`**: 计时器, 勾选态与 TreeView 都由 `createPortsView` 返回的 `dispose()` 释放, 而它挂在 `context.subscriptions` 上, 宿主会在停用时统一调用. 单独导出一个 `deactivate` 只会是空壳.
+
 ## 9. 实施步骤
 
 - [x] 工程基线: `build.mjs`, `tsconfig.json`, `.gitignore`, `.vscodeignore`, `.vscode/launch.json`, `.vscode/tasks.json`.
 - [x] 扩展身份与发布文件: `package.json`, `LICENSE.txt`, `CHANGELOG.md`, README, 两个 `package.nls*.json`, `l10n/bundle.l10n.zh-cn.json`, `scripts/render-icon.mjs` 与 `media/icon.svg`.
-- [x] 清单契约: 命令, insert 的单条默认 `keybindings` 与 `editorConsoleToolkit.prefix` 配置; 不声明 `activationEvents`, `views`, `viewsContainers`, `menus`, `extensionDependencies`.
+- [x] 清单契约: 命令, insert 的单条默认 `keybindings` 与 `editorConsoleToolkit.prefix` 配置; 不声明 `activationEvents`, `extensionDependencies`.
+- [x] ports 功能域: 采集解析层, 归属判定与自保护, 终止层, TreeView 与批量勾选, 清单贡献点与双语文案. 设计契约见 `.ai-ctx/plans/20260806_端口与进程管理能力集成.md`, 本节不重复.
 - [x] `src/core/types.ts` 与 `src/core/snapshot.ts`: 不可变 `DocumentSnapshot` 与行索引.
 - [x] `src/core/selectionResolver.ts`: 显式单行选择, 反向选择, 空选择的标识符与属性链扩展.
 - [x] `src/core/statementScanner.ts`: 括号深度与字符串状态扫描, 50 行上限, 注释/字符串内光标判定, 锚点与缩进.
@@ -572,42 +628,55 @@ npx vsce ls
 
 ### 10.2 静态负向检查
 
-对 `src/` 与 `out/extension.js` 检查不得出现:
+由 `scripts/check-extra.mjs` 实现, 由 `scripts/check.mjs` 调起. 禁止清单**按目录分级**, 因为两个功能域的产品承诺不同: console 域承诺纯命令式零后台开销, ports 域本身就是常驻视图加轮询刷新.
+
+分级而不是整体放开, 是为了防止日后无意给 console 命令加上监听器或计时器.
+
+`GLOBAL_FORBIDDEN` —— `src/` 下任何文件都不得出现:
+
+```text
+onDidChangeTextDocument
+onDidChangeActiveTextEditor
+axios
+telemetry
+```
+
+`CONSOLE_ONLY_FORBIDDEN` —— 只对 `src/` 下**不属于** `src/ports/` 的文件生效:
 
 ```text
 createStatusBarItem
 createTreeView
 registerTreeDataProvider
 registerWebviewViewProvider
-onDidChangeTextDocument
-onDidChangeActiveTextEditor
 onDidChangeConfiguration
 setInterval
 setTimeout
-require('fs')
 readFileSync
-axios
-fetch(
-telemetry
-vscode.git
 ```
+
+放行判定按**路径分段**比较而非字符串前缀, 因此 `src/portsy/` 不会被 `ports` 放行. 这条行为由 `test/buildGates.test.mjs` 用 `test/fixtures/gates/` 下的假仓库根钉住.
+
+`src/ports/` 刻意不使用 `node:fs`: Linux 侧读工作目录走 `readlink` 子进程而不是 `readFileSync`, 所以 `readFileSync` 不需要为 ports 域放行.
 
 对 `package.json` 检查不存在:
 
 ```text
-contributes.views
-contributes.viewsContainers
-contributes.menus
+contributes.keybindings 之外的契约违背 (见下)
 contributes.commands[].enablement
 activationEvents
 extensionDependencies
 dependencies(非空)
 ```
 
+`contributes.views` / `viewsContainers` / `menus` **已不在禁止清单内**: 它们是 ports 视图的必需项, 见 §5.4.
+
+快捷键正向断言: `contributes.keybindings` 必须与 §5.2 完全一致 —— 有且只有 insert 的 `alt+l`, `when` 为 `editorTextFocus && !editorReadonly`, 且该命令确实在 `contributes.commands` 里. 契约外的任何绑定都算失败, 这也是 ports 命令不给默认快捷键的原因.
+
 一致性检查:
 
 - 两个 `package.nls*.json` 的 key 集完全一致, 且与 `package.json` 中实际使用的 `%...%` 占位符一一对应, 无未使用 key.
-- `src/commands/runner.ts` 中全部 `vscode.l10n.t('...')` 源串与 `l10n/bundle.l10n.zh-cn.json` 的 key 一一对应, 无缺失无多余.
+- `src/` 下全部 `vscode.l10n.t('...')` 源串与 `l10n/bundle.l10n.zh-cn.json` 的 key 一一对应, 无缺失无多余.
+- VSIX 内容按允许清单断言, 推导规则在 `scripts/lib/vsix-allowlist.mjs`, 是纯函数且有单测.
 
 ### 10.3 人工验收清单
 
@@ -643,9 +712,9 @@ dependencies(非空)
 `release` job 的校验链, 任一步失败即中止发布:
 
 1. **版本一致性** —— 标签名去掉 `v` 前缀后必须与 `package.json` 的 `version` 相等, 否则产物名与 Release 名会错位.
-2. **`npm run typecheck`** —— 本项目没有自动化测试, 类型检查是唯一的自动质量门, 因此必须在打包前独立跑一次.
+2. **`npm run typecheck`** 与 **`npm test`** —— 类型检查加 vitest. §3.2 的"首版不建设自动化测试"已被后续补齐, 现在两者都是打包前的独立质量门.
 3. **本地化一致性** —— 两个 `package.nls*.json` 的 key 集必须相同, 且与清单里用到的 `%...%` 占位符一一对应; `runner.ts` 中的 `vscode.l10n.t` 源串必须与中文 bundle 的 key 一一对应. 这两项漏了不会让构建失败, 只会在市场上静默丢文案, 所以必须在 CI 拦住.
-4. **静态负向检查** —— `src/` 不得出现常驻 UI, 后台监听, 定时器, 磁盘读取, 网络与遥测 API; `package.json` 不得出现 `views` / `viewsContainers` / `menus` / `activationEvents` / `extensionDependencies` / 非空 `dependencies` / `commands[].enablement`. 最后一项专门防止 §5.2 那个坑再次出现. 同时正向断言 `contributes.keybindings` 与 §5.2 一致: 有且只有 insert 的 `alt+l` 一条, `when` 与命令名都对得上.
+4. **静态负向检查** —— 按 §10.2 的目录分级清单: `src/` 全域禁网络, 遥测与跨文档监听; console 域 (`src/` 除 `src/ports/`) 另外禁常驻 UI, 计时器, 配置监听与磁盘读取. `package.json` 不得出现 `activationEvents` / `extensionDependencies` / 非空 `dependencies` / `commands[].enablement`, 最后一项专门防止 §5.2 那个坑再次出现. 同时正向断言 `contributes.keybindings` 与 §5.2 一致: 有且只有 insert 的 `alt+l` 一条, `when` 与命令名都对得上.
 5. **打包** —— `vsce package` 会触发 `vscode:prepublish` 做生产构建, 无需另外 compile.
 6. **Release 说明** —— 从 `CHANGELOG.md` 中抽取 `## <version>` 小节作为 Release body; 缺失时只告警, 不阻断发布.
 
@@ -692,6 +761,19 @@ git tag v0.0.2 && git push origin main --tags
 - 多光标是必须验收的功能.
 - 扩展只操作自己带 marker 的日志, 不清理用户手写日志.
 
+以下决策属于 0.0.2 加入的 ports 功能域, 完整理由与被否决的候选见 `.ai-ctx/plans/20260806_端口与进程管理能力集成.md` 的决策表:
+
+- **UI 为 TreeView 侧边栏 + 原生 `checkboxState` 多选**, 不用 QuickPick.
+- **门禁按目录分级放开**而非整体删除, 见 §10.2.
+- **树的根节点是进程而不是端口**, 端口聚合到该行 —— 终止的单位本就是进程, 这样勾选数与被终止的进程数永远一致.
+- **仅视图可见时轮询**, 默认 5000ms, 可设 `0` 关闭.
+- **终止策略为 SIGTERM 超时升级 SIGKILL, 仅目标进程**, 不碰进程树.
+- **默认只列 TCP LISTEN**, UDP 由 `includeUdp` 开启.
+- **默认隐藏系统项**, 判定用"系统目录前缀 + 端口阈值"两条规则而不是维护进程名与端口名单.
+- **编辑器自身及其祖先进程绝不可终止**, 名单由 `process.pid` 上溯父进程链得出, 不按进程名匹配.
+- **三平台都实现**, Windows 与 Linux 的解析只有固化样例覆盖, 未实机验证.
+- **不移植上游 `vscode-port-cleaner` 的代码**, 只参考其平台命令选型, 因此不产生 MIT 归属义务.
+
 ## 14. 实现记录
 
 ### 14.1 与原设计的偏差
@@ -732,8 +814,36 @@ git tag v0.0.2 && git push origin main --tags
 - 一次撤销恢复多光标编辑前状态.
 - 未保存文档 insert 后立即 toggle.
 
+### 14.5 0.0.2: Ports 功能域
+
+§14.1 至 §14.4 记录的是 0.0.1 的状态, 其中"`contributes` 只有 `commands` 与 `configuration`"与"不建设自动化测试"两条已被后续变更取代, 保留原文作为当时的事实.
+
+实施分六个工作单元, 每个单元独立验证与提交. 与原设计的偏差:
+
+- **新增 `src/ports/scan/address.ts`**: `parseEndpoint` 与 `mergeListeners` 被三个平台扫描器共用, 复制三份会让"IPv4/IPv6 合并规则只有一处权威实现"落空. 端口一律取最后一个冒号之后的部分, 否则 IPv6 地址里的冒号会把解析带偏.
+- **Linux 的 `ps` 格式增加 `user=`**: `ss` 不提供进程所属用户, 而"其他用户进程不可终止"这条保护需要它.
+- **系统目录前缀增加 `/usr/lib/`**: 大量 Linux 系统服务的可执行文件在此, 遗漏会让该平台的系统项过滤基本失效.
+- **`collectAncestors` 增加 `platform` 参数**: Windows 上没有 `ps -o ppid=`, 走 PowerShell 的 `Win32_Process.ParentProcessId`.
+- **`TreeView` 传 `manageCheckboxStateManually: true`**: 否则 VS Code 自行管理勾选态, 与 provider 自存的映射打架. 勾选态必须自存, 因为每轮刷新都会重建全部 `TreeItem`.
+- **终止前重新校验命令行**: 从勾选到确认之间进程可能退出且 PID 被复用, 不校验就有杀错进程的风险. 不一致的项报"已跳过"而非静默终止.
+- **进程在确认期间自行退出时判为已终止**而非已跳过: 用户目的已达成, 报"已跳过"会误导.
+- **扫描失败渲染成列表里的一行, 不弹通知**: 轮询下每轮弹一次会把编辑器淹掉.
+
+验证结果:
+
+- `npm run typecheck` 通过.
+- `npx vitest run` 通过, 14 文件 198 测试 (0.0.1 后为 83).
+- `node scripts/check.mjs` 七项全通过.
+- `npm run build` 通过, 生产构建 `out/extension.js` 约 27.6 KB (0.0.1 为 9.9 KB).
+- `npm run package` 通过, VSIX 十个条目, 相比 0.0.1 增加 `media/ports.svg`, 内容断言通过.
+- 人工验收八项全部通过. 其中"关闭侧边栏后不再有刷新活动"由外部采样客观测量: 侧边栏切走后采样 40 秒零次扫描, 同期投放的两个诱饵均被捕获以证明采样灵敏度; 视图打开后采样 30 秒恰好六次, 间隔精确 5 秒, 父进程为扩展宿主.
+
+未验证项:
+
+- Windows 与 Linux 的命令输出解析只有固化样例覆盖, 未在真实系统上执行过. Windows 的 PowerShell 脚本文本同样未实机运行.
+
 ## 15. 后续任务
 
-- 补自动化测试, 优先覆盖 `planEdits` 与 `statementScanner` 两个纯逻辑模块; 补上后在 §11 的 `release` job 里增加一个 `npm test` 步骤.
 - 按 §6.2 推进 Tier 2 语言.
-- 配置 `VSCE_PAT` 与 `OVSX_PAT` 两个 repository secret, 然后打第一个 `v0.0.1` 标签走一遍 §11 的发布流程.
+- Windows 与 Linux 的端口采集需要实机验证; 可考虑在 §11 的 workflow 里增加多平台矩阵跑扫描层的集成测试.
+- `src/ports/view/provider.ts` 与 `src/ports/commands.ts` 依赖 `vscode` 运行时, 目前只有人工验收覆盖; 若要把"刷新不清空勾选态"这类行为转成自动化断言, 需要引入 `vscode` 模块替身或 `@vscode/test-electron`.
