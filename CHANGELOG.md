@@ -17,6 +17,10 @@ Adds a second feature area: **Port Toolkit**, for seeing which processes hold yo
 - Five settings under `editorConsoleToolkit.ports.*`: `refreshInterval` (default `5000`, `0` disables auto-refresh), `killTimeout` (`3000`), `hideSystemProcesses` (`true`), `systemPortMax` (`1024`), `includeUdp` (`false`).
 - Default keybinding `Alt+L` for **Insert Console Log**, limited to `editorTextFocus && !editorReadonly`.
 
+### Changed
+
+- New icon: a terminal window with two output lines — one dimmed to read as commented out, one highlighted — and three status lamps below it. The previous `>` prompt now belongs to Editor Lang Toolkit; two extensions sitting next to each other in the extensions list have to be distinguishable at a glance.
+
 ### Notes
 
 - The view rescans **only while it is visible**; switching to another Activity Bar icon stops the timer, so there is no background scanning when you are not looking at it. One scan is three fixed command invocations regardless of how many ports are open.
