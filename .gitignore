@@ -1,10 +1,18 @@
 node_modules/
 out/
+artifacts/
 *.vsix
 
-# 全局 gitignore 忽略了所有点目录, 这里恢复扩展开发与 CI 所需的配置
+# VS Code 集成测试 harness 的缓存目录, 保留规则以防误提交
+.vscode-test/
+.vscode-test-web/
+
+# 跨任务上下文里的自建缓存
+.ai-ctx/cache/
+
+# 全局 ~/.gitignore 忽略所有点目录与 lockfile, 这里恢复扩展开发与 CI 必需的文件
 !.vscode/
 !.github/
-
-# 全局 gitignore 忽略 lockfile, 但打包需要它锁定解析版本
+!.github/**
+!.nvmrc
 !package-lock.json

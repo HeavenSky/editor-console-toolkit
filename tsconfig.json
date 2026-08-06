@@ -4,20 +4,26 @@
     "moduleResolution": "Bundler",
     "target": "ES2022",
     "lib": [
-      "ES2022"
+      "ES2022",
+      "DOM"
     ],
     "types": [
       "node"
     ],
-    "rootDir": "src",
     "strict": true,
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
     "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "src"
+    "src",
+    "test"
   ]
 }
