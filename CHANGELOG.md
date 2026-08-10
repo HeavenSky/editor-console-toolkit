@@ -1,5 +1,35 @@
 # Change Log
 
+## v0.0.3 2026-08-10 Insertion anchors
+
+Reworks where an inserted log lands, and turns the ports view's search into a permanent row.
+
+### Added
+
+- **Logs now go inside the block they belong to.** With the cursor on a line that opens a block — a function signature, an `if` / `for` head, a callback body — the log is inserted as that block's **first statement**, indented like the rest of the block, instead of after the whole construct. This is the placement you want when you are logging a parameter.
+- Blocks that cannot hold statements (`switch`, `class`, Rust's `match` and `impl`) put the log on the line **before** the statement, where the value being logged has already been evaluated.
+- **A search row is always present** as the first row of the Port Toolkit view. Click it to type; the list narrows as you type, **Enter** keeps the filter and **Esc** restores what was there before you opened the box. While a filter is active the row shows the term and a `2 of 7 shown` match count, and carries a ✕ to clear it; with no filter there is nothing to clear, so the ✕ is absent.
+- 13 regression cases covering insertion placement across the supported languages, plus a lexer test suite — 305 tests in total.
+
+### Changed
+
+- The ports view is now named **Port Toolkit** rather than **Listening Processes**, matching its container.
+- `Search Ports` and `Clear Port Search` left the view's title bar: search is the row, and clear is the ✕ on it. Both commands remain in the Command Palette and stay bindable to a key.
+- Block syntax is now read from each language's adapter rather than assumed to be C-like, which is what makes Python's indentation and the `do` / `end` blocks of Ruby, Lua and Elixir land correctly.
+- Log removal now requires the log to sit on the line immediately next to its anchor, which follows from the log no longer always being *after* the statement.
+
+### Fixed
+
+- The cursor being inside a **multi-line string or a block comment** is now detected: a template literal, a Python triple-quoted string or the body of a `/* … */` refuses the insertion instead of writing a log into the middle of a literal. Previously only single-line comments and strings were recognised.
+- A log inserted for an argument of a **multi-line call** took its indentation from the argument's line, so it did not line up with the closing `);`. Indentation is now taken from the statement's first line.
+- `if (input.type === "file") {` was read as a restricted block, because the restricted-block keywords matched **property names** as well — every condition containing `.type` had its log pushed before the statement. Property accesses no longer match.
+
+### Notes
+
+- **A filter does not clear your ticks.** A process ticked before you filtered stays ticked even when the filter hides its row, so `Kill Checked Processes` will terminate it. The confirmation dialog always lists everything that is about to go down.
+- When the syntax is genuinely ambiguous — a lone `{` whose meaning cannot be told apart — the log falls back to landing after the whole statement: further out than you might want, but never syntactically broken.
+- Still no runtime dependencies, no telemetry and no network access.
+
 ## v0.0.2 2026-08-07 Port Toolkit
 
 Adds a second feature area: **Port Toolkit**, for seeing which processes hold your local ports and terminating them in batches.
