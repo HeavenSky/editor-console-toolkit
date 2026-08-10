@@ -23,6 +23,19 @@ function readPrefix(document: vscode.TextDocument): string {
   return sanitizePrefix(raw);
 }
 
+/**
+ * 一级缩进的字面文本, 用于往空块里插入日志时对齐.
+ *
+ * 读取活动编辑器时 VS Code 已把这些值解析成 number 或 boolean, 但类型仍是联合类型, 因此逐项
+ * typeof 判定; `indentSize` 可能是字符串 `"tabSize"`, 那时退回 `tabSize`.
+ */
+function readIndentUnit(editor: vscode.TextEditor): string {
+  const { insertSpaces, indentSize, tabSize } = editor.options;
+  const width =
+    typeof indentSize === 'number' ? indentSize : typeof tabSize === 'number' ? tabSize : 2;
+  return insertSpaces === false ? '\t' : ' '.repeat(Math.max(1, width));
+}
+
 function warn(code: UnsupportedCode): void {
   // 源字符串即 l10n 的 lookup key, 因此必须是字面量, 不能拼接.
   switch (code) {
@@ -78,7 +91,12 @@ export async function runConsoleLogCommand(mode: CommandMode): Promise<void> {
   }
 
   const eol: EndOfLine = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-  const snapshot = createSnapshot(document.getText(), document.languageId, eol);
+  const snapshot = createSnapshot(
+    document.getText(),
+    document.languageId,
+    eol,
+    readIndentUnit(editor)
+  );
 
   // toggle-all 作用于整个文件, 既不看 selection 也不需要 prefix.
   let plan;

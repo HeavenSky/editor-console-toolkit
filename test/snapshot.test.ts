@@ -11,6 +11,11 @@ describe('createSnapshot', () => {
     expect(snapshot.lineAt(2)).toEqual({ index: 2, start: 5, end: 8, text: 'ccc' });
   });
 
+  it('indentUnit 默认两空格, 可由调用方覆盖', () => {
+    expect(snap('a\n').indentUnit).toBe('  ');
+    expect(snap('a\n', 'typescript', '\n', '\t').indentUnit).toBe('\t');
+  });
+
   it('CRLF 的 \\r 不算进行内容', () => {
     const snapshot = snap('a\r\nb');
     expect(snapshot.lineAt(0).text).toBe('a');

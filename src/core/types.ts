@@ -18,6 +18,13 @@ export type DocumentSnapshot = {
   readonly text: string;
   readonly languageId: string;
   readonly eol: EndOfLine;
+  /**
+   * 一级缩进的字面文本, 例如两个空格或一个 tab.
+   *
+   * 只在往空块里插入日志时才用得上 —— 块里已有代码时一律照抄那一行的缩进, 与文件现有风格对齐.
+   * 与 eol 同类: 都是由编辑器决定, 由 runner 在建快照时传入, core 因此不必 import vscode.
+   */
+  readonly indentUnit: string;
   readonly lineCount: number;
   lineAt(index: number): LineInfo;
   lineOf(offset: number): number;
@@ -50,12 +57,14 @@ export type ExpressionTarget = {
 
 export type InsertionAnchor = {
   kind: 'anchor';
-  /** 目标所属逻辑语句的最后一行. */
+  /** 锚点行: 语句结束行, 或块开始行, 或不能容纳语句的那条语句本身. */
   line: number;
-  /** 插入位置, 等于锚点行的行尾 offset. */
+  /** 插入位置; placement 为 after-line 时是锚点行行尾, before-line 时是锚点行行首. */
   offset: number;
-  /** 锚点行的前导空白. */
+  /** 新行使用的前导空白. */
   indent: string;
+  /** 日志放在锚点行之后还是之前. */
+  placement: 'after-line' | 'before-line';
 };
 
 export type RenderLogInput = {

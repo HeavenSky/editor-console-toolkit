@@ -107,6 +107,96 @@ describe('locateAnchor', () => {
     expect(anchorLine(text, 'const v', JS)).toBe('unbalanced-syntax');
   });
 
+  it('目标在多行参数列表内部时收尾在整条语句之后', () => {
+    // 旧实现在 `payload,` 那一行当场收尾, 于是日志被插进参数列表里。
+    const text = 'send(\n  payload,\n  headers\n);\nnext();';
+    expect(anchorLine(text, 'payload', JS)).toBe(3);
+  });
+
+  it('目标在多行对象字面量内部时收尾在字面量之后', () => {
+    const text = 'const o = {\n  name: value,\n};\nnext();';
+    expect(anchorLine(text, 'value', JS)).toBe(2);
+  });
+
+  it('运算符留在行尾的续行继续向下', () => {
+    const text = 'const ok = first &&\n  second;\nnext();';
+    expect(anchorLine(text, 'first', JS)).toBe(1);
+  });
+
+  it('运算符放在行首的三元续行也继续向下', () => {
+    // 上一行行尾是 `cond`, 没有任何符号可查, 只能靠下一行行首的 `?` 与 `:`。
+    const text = 'const v = cond\n  ? a\n  : b;\nnext();';
+    expect(anchorLine(text, 'cond', JS)).toBe(2);
+  });
+
+  it('方法链的点号在行首时继续向下', () => {
+    const text = 'const v = source\n  .filter(Boolean)\n  .join();\nnext();';
+    expect(anchorLine(text, 'source', JS)).toBe(2);
+  });
+});
+
+describe('locateAnchor 块内插入', () => {
+  /** 返回锚点行号与缩进, 用来同时断言位置与对齐。 */
+  function anchorOf(text: string, needle: string, config: ScanConfig, indentUnit = '  ') {
+    const snapshot = snap(text, 'typescript', '\n', indentUnit);
+    const target = resolveSelection(snapshot, caretIn(text, needle), '');
+    if (target.kind === 'unsupported') throw new Error(`预期解析成功, 实际 ${target.code}`);
+    const anchor = locateAnchor(snapshot, target, config);
+    if (anchor.kind === 'unsupported') throw new Error(`预期定位成功, 实际 ${anchor.code}`);
+    return anchor;
+  }
+
+  it('函数签名的日志落在函数体第一行, 缩进照抄体内现有行', () => {
+    const anchor = anchorOf('function f(input) {\n\treturn input;\n}\n', 'input', JS);
+    expect(anchor.line).toBe(0);
+    expect(anchor.indent).toBe('\t');
+    expect(anchor.placement).toBe('after-line');
+  });
+
+  it('条件头的日志落在块内', () => {
+    const anchor = anchorOf('if (ready) {\n    run();\n}\n', 'ready', JS);
+    expect(anchor.line).toBe(0);
+    expect(anchor.indent).toBe('    ');
+  });
+
+  it('箭头函数体的日志落在回调体内, 而不是被推到 }); 之外', () => {
+    // 这个块开在未闭合的括号里, 按"外层括号必须闭合"会跑到回调之外, 而参数在那里不在作用域内。
+    const anchor = anchorOf('list.map(item => {\n  return item;\n});\n', 'item', JS);
+    expect(anchor.line).toBe(0);
+    expect(anchor.indent).toBe('  ');
+  });
+
+  it('类里的方法签名落在方法体内, 而不是插进 class body', () => {
+    const anchor = anchorOf('class A {\n\trun(arg) {\n\t\treturn arg;\n\t}\n}\n', 'arg', JS);
+    expect(anchor.line).toBe(1);
+    expect(anchor.indent).toBe('\t\t');
+  });
+
+  it('Allman 风格的花括号也算块', () => {
+    const anchor = anchorOf('if (ready)\n{\n  run();\n}\n', 'ready', JS);
+    expect(anchor.line).toBe(1);
+    expect(anchor.indent).toBe('  ');
+  });
+
+  it('空块回退到块头缩进加一级', () => {
+    expect(anchorOf('  function f(a) {\n  }\n', 'a', JS).indent).toBe('    ');
+    expect(anchorOf('  function f(a) {\n  }\n', 'a', JS, '\t').indent).toBe('  \t');
+  });
+
+  it('块内的普通语句仍然跟随目标行缩进', () => {
+    const anchor = anchorOf('function f() {\n  const a = 1;\n}\n', 'const a', JS);
+    expect(anchor.line).toBe(1);
+    expect(anchor.indent).toBe('  ');
+  });
+
+  it('对象字面量不被当成块', () => {
+    const anchor = anchorOf('const o = {\n  name: 1,\n};\n', 'const o', JS);
+    expect(anchor.line).toBe(2);
+    expect(anchor.indent).toBe('');
+  });
+});
+
+describe('locateAnchor 缩进与兜底', () => {
   it('缩进取目标所在行的前导空白, 而不是锚点行的', () => {
     const text = '    const v = f(\n      a\n    );\n';
     const snapshot = snap(text);

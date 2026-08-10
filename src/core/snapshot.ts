@@ -5,8 +5,15 @@ import type { DocumentSnapshot, EndOfLine, LineInfo } from './types';
  * 因此未保存的缓冲区也能得到正确结果.
  *
  * 行尾按实际字符切分, 与 eol 参数无关: 文档可能混用 LF 与 CRLF, 而 eol 只用于决定新插入行的换行符.
+ *
+ * `indentUnit` 只在往空块里插入时用到, 默认两空格; 真实运行时由 runner 从编辑器设置算出.
  */
-export function createSnapshot(text: string, languageId: string, eol: EndOfLine): DocumentSnapshot {
+export function createSnapshot(
+  text: string,
+  languageId: string,
+  eol: EndOfLine,
+  indentUnit = '  '
+): DocumentSnapshot {
   const lineStarts: number[] = [0];
   for (let i = 0; i < text.length; i++) {
     if (text.charCodeAt(i) === 10) {
@@ -44,5 +51,5 @@ export function createSnapshot(text: string, languageId: string, eol: EndOfLine)
     return low;
   };
 
-  return { text, languageId, eol, lineCount, lineAt, lineOf };
+  return { text, languageId, eol, indentUnit, lineCount, lineAt, lineOf };
 }

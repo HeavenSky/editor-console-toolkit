@@ -77,6 +77,11 @@ describe('isContinuation', () => {
     expect(isContinuation('if (x) {', '  run();')).toBe(false);
   });
 
+  it('下一行是 Allman 风格的花括号时算续行', () => {
+    // 否则日志会插在 `if (ready)` 与 `{` 之间, 变成 if 的唯一分支体。
+    expect(isContinuation('if (ready)', '{')).toBe(true);
+  });
+
   it('Python 的块头不算续行', () => {
     // `:` 刻意不在行尾续行集合里 —— 它是 Python 的块开始。
     expect(isContinuation('def f(value):', '    return value')).toBe(false);

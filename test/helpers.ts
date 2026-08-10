@@ -1,8 +1,13 @@
 import { createSnapshot } from '../src/core/snapshot';
 import type { DocumentSnapshot, EditPlan, EndOfLine, PlannedEdit, SelectionLike } from '../src/core/types';
 
-export function snap(text: string, languageId = 'typescript', eol: EndOfLine = '\n'): DocumentSnapshot {
-  return createSnapshot(text, languageId, eol);
+export function snap(
+  text: string,
+  languageId = 'typescript',
+  eol: EndOfLine = '\n',
+  indentUnit = '  ',
+): DocumentSnapshot {
+  return createSnapshot(text, languageId, eol, indentUnit);
 }
 
 /** 空选择, 光标落在 needle 内部 (末字符之后), 用来模拟"光标停在标识符上". */

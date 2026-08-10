@@ -1,5 +1,5 @@
-import { classifyAt, scanDocument } from './lexer';
-import type { LexConfig } from './lexer';
+import { classifyAt, isContinuation, scanDocument, stripLineComment } from './lexer';
+import type { LexConfig, LexState, OpenDelimiter } from './lexer';
 import { unsupported } from './types';
 import type { DocumentSnapshot, ExpressionTarget, InsertionAnchor, Unsupported } from './types';
 
@@ -20,56 +20,7 @@ export const toLexConfig = (config: ScanConfig): LexConfig => ({
   blockComment: config.blockComment
 });
 
-type LineState = {
-  depth: number;
-  /** 未闭合时为当前定界符, 否则为 null. */
-  openQuote: string | null;
-  /** 本行进入单行注释的列, 没有则为 -1. */
-  commentAt: number;
-  /** 本行以反斜杠续行. */
-  continued: boolean;
-};
-
-/**
- * 扫描一行, 返回行末状态. 括号深度累加到 depth 上, 字符串状态跨行保留
- * (JS 模板字符串和 Python 三引号都会跨行, 真正未闭合的字符串则由 MAX_STATEMENT_LINES 兜住).
- */
-function scanLine(text: string, depth: number, openQuote: string | null, config: ScanConfig): LineState {
-  let commentAt = -1;
-  let quote = openQuote;
-  let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-    if (quote !== null) {
-      if (ch === '\\') {
-        i += 2;
-        continue;
-      }
-      if (ch === quote) {
-        quote = null;
-      }
-      i++;
-      continue;
-    }
-    if (text.startsWith(config.commentPrefix, i)) {
-      commentAt = i;
-      break;
-    }
-    if (config.stringDelimiters.includes(ch)) {
-      quote = ch;
-      i++;
-      continue;
-    }
-    if (ch === '(' || ch === '[' || ch === '{') {
-      depth++;
-    } else if (ch === ')' || ch === ']' || ch === '}') {
-      depth--;
-    }
-    i++;
-  }
-  const code = commentAt === -1 ? text : text.slice(0, commentAt);
-  return { depth, openQuote: quote, commentAt, continued: /\\\s*$/.test(code) };
-}
+const leadingWhitespace = (text: string): string => /^[ \t]*/.exec(text)![0];
 
 /**
  * 判断某个 offset 落在代码, 注释还是字符串字面量里.
@@ -88,15 +39,62 @@ export function classifyOffset(
 }
 
 /**
- * 从目标所在行向下找到逻辑语句的结束行, 插入点是该行行尾.
- * 括号未闭合, 字符串未闭合或反斜杠续行时继续向下, 超过 MAX_STATEMENT_LINES 判为不安全.
+ * 目标行入口栈里**不需要**闭合的项数.
+ *
+ * 只需闭合到最近的块边界: 包含目标的那个块不必闭合(日志正是要落在块内), 而块内侧的每个
+ * 括号, 方括号与对象字面量都必须闭合, 否则日志会插到它们中间.
+ */
+function keptDepth(stack: readonly OpenDelimiter[]): number {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i].kind === 'brace-block') {
+      return i + 1;
+    }
+  }
+  return 0;
+}
+
+/**
+ * 块内第一条语句该用的缩进.
+ *
+ * 优先照抄块里已有那一行的缩进 —— 与文件现有风格一致, 混用 tab 与空格的仓库也不会错.
+ * 只有空块才回退到"块头缩进 + 一级", 因为那时没有可抄的对象. 把闭合符那一行当成空块:
+ * 抄它的缩进会得到与块头相同的缩进, 在 Python 下就是 IndentationError.
+ */
+function blockIndent(snapshot: DocumentSnapshot, anchorLine: number, blockLine: number): string {
+  if (anchorLine + 1 < snapshot.lineCount) {
+    const next = snapshot.lineAt(anchorLine + 1);
+    const trimmed = next.text.trim();
+    if (trimmed !== '' && !/^[)\]}]/.test(trimmed) && trimmed !== 'end') {
+      return leadingWhitespace(next.text);
+    }
+  }
+  return leadingWhitespace(snapshot.lineAt(blockLine).text) + snapshot.indentUnit;
+}
+
+/**
+ * 找到日志该落在哪一行.
+ *
+ * 从目标行向下扫描, 在满足全部三条时收尾:
+ * 1. **最内层未闭合的块之上没有任何未闭合的定界符** —— 括号, 方括号与对象字面量都必须闭合,
+ *    否则日志会插进它们中间; 块自身不必闭合, 因为日志正是要落在块内. 少了这一条,
+ *    `const v = f(` 会在目标行当场收尾, 日志被插进括号里;
+ * 2. 不在未闭合字符串内, 也不在块注释内;
+ * 3. 该行不是续行.
+ *
+ * 收尾时若最内层未闭合的块是在目标行之后新开的, 说明目标行开启了一个块, 日志落到块内第一条
+ * 语句的位置; 否则日志落在语句之后, 缩进跟随目标行. 以"出口栈的最内层块"而不是"目标行入口栈"
+ * 作边界, 是为了让 `list.map(item => {` 这种开在未闭合括号内的块也算块 —— 否则日志会被推到
+ * `});` 之外, 而 `item` 在那里根本不在作用域内.
  */
 export function locateAnchor(
   snapshot: DocumentSnapshot,
   target: ExpressionTarget,
   config: ScanConfig
 ): InsertionAnchor | Unsupported {
-  const classification = classifyOffset(snapshot, target.sourceRange.start, config);
+  const lexConfig = toLexConfig(config);
+  const states = scanDocument(snapshot, lexConfig);
+
+  const classification = classifyAt(snapshot, target.sourceRange.start, states, lexConfig);
   if (classification === 'comment') {
     return unsupported('cursor-in-comment');
   }
@@ -104,25 +102,45 @@ export function locateAnchor(
     return unsupported('cursor-in-string');
   }
 
-  let depth = 0;
-  let openQuote: string | null = null;
+  const targetIndent = leadingWhitespace(snapshot.lineAt(target.sourceLine).text);
+  const kept = keptDepth(states[target.sourceLine].stack);
   const lastLine = Math.min(target.sourceLine + MAX_STATEMENT_LINES, snapshot.lineCount) - 1;
+
   for (let index = target.sourceLine; index <= lastLine; index++) {
     const line = snapshot.lineAt(index);
-    const state = scanLine(line.text, depth, openQuote, config);
-    depth = state.depth;
-    openQuote = state.openQuote;
-    if (depth <= 0 && openQuote === null && !state.continued) {
-      return {
-        kind: 'anchor',
-        line: index,
-        offset: line.end,
-        indent: /^[ \t]*/.exec(snapshot.lineAt(target.sourceLine).text)![0]
-      };
+    const exit: LexState = states[index + 1];
+
+    // 弹出了目标所在的块 —— 只可能出现在语法残缺的文件里. 就地收尾, 不继续向下扫,
+    // 否则会一路扫到 MAX_STATEMENT_LINES 然后报"找不到安全位置".
+    if (exit.stack.length < kept) {
+      return { kind: 'anchor', line: index, offset: line.end, indent: targetIndent, placement: 'after-line' };
     }
-    if (depth < 0) {
-      depth = 0;
+
+    // 最内层块之上还有没闭合的括号或字面量时不能收尾.
+    const aboveInnermostBlock = exit.stack.slice(keptDepth(exit.stack));
+    if (aboveInnermostBlock.length > 0 || exit.openQuote !== null || exit.inBlockComment) {
+      continue;
     }
+
+    const code = stripLineComment(line.text, lexConfig);
+    const nextCode =
+      index + 1 < snapshot.lineCount ? stripLineComment(snapshot.lineAt(index + 1).text, lexConfig) : '';
+    if (isContinuation(code, nextCode)) {
+      continue;
+    }
+
+    const innermost = exit.stack[exit.stack.length - 1];
+    // 块是在目标行或其后新开的 —— 那才说明目标行开启了一个块, 日志要落进去.
+    const opensBlock =
+      innermost !== undefined && innermost.kind === 'brace-block' && innermost.line >= target.sourceLine;
+    return {
+      kind: 'anchor',
+      line: index,
+      offset: line.end,
+      indent: opensBlock ? blockIndent(snapshot, index, innermost.line) : targetIndent,
+      placement: 'after-line'
+    };
   }
+
   return unsupported('unbalanced-syntax');
 }
