@@ -6,6 +6,7 @@ export const kotlinAdapter = createTemplateAdapter({
   id: 'kotlin',
   languageIds: ['kotlin'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: '"',
   escapeText: (raw, quote) => escapeLiteral(raw, quote, ['$']),
   render: ({ text, expr }) => `println("${text} \${${expr}}")`

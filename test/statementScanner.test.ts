@@ -6,8 +6,13 @@ import { resolveSelection } from '../src/core/selectionResolver';
 
 import { caretIn, snap } from './helpers';
 
-const JS: ScanConfig = { commentPrefix: '//', stringDelimiters: ['"', "'", '`'] };
+const JS: ScanConfig = {
+  commentPrefix: '//',
+  stringDelimiters: ['"', "'", '`'],
+  blockComment: { open: '/*', close: '*/' },
+};
 const RUST: ScanConfig = { commentPrefix: '//', stringDelimiters: ['"'] };
+const PY: ScanConfig = { commentPrefix: '#', stringDelimiters: ['"""', "'''", '"', "'"] };
 
 /** 解析目标后定位插入锚点, 返回锚点行号或失败原因。 */
 function anchorLine(text: string, needle: string, config: ScanConfig): number | string {
@@ -35,6 +40,24 @@ describe('classifyOffset', () => {
   it('转义引号不会提前结束字符串', () => {
     const text = "const s = 'a\\'b' + c;";
     expect(classifyOffset(snap(text), text.indexOf('c;'), JS)).toBe('code');
+  });
+
+  it('块注释里的光标算注释, 跨行也算', () => {
+    const text = '/*\nconst hidden = 1;\n*/\nnext();';
+    expect(classifyOffset(snap(text), text.indexOf('hidden'), JS)).toBe('comment');
+    expect(classifyOffset(snap(text), text.indexOf('next'), JS)).toBe('code');
+  });
+
+  it('跨行模板字符串里的光标算字符串', () => {
+    const text = 'const s = `\ninner value\n`;\nnext();';
+    expect(classifyOffset(snap(text), text.indexOf('inner'), JS)).toBe('string');
+    expect(classifyOffset(snap(text), text.indexOf('next'), JS)).toBe('code');
+  });
+
+  it('Python 三引号里的光标算字符串', () => {
+    const text = 's = """\ninner value\n"""\nnext()';
+    expect(classifyOffset(snap(text), text.indexOf('inner'), PY)).toBe('string');
+    expect(classifyOffset(snap(text), text.indexOf('next'), PY)).toBe('code');
   });
 
   it('Rust 的生命周期不被当成字符串开头', () => {

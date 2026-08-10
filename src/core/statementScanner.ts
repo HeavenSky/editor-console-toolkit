@@ -1,3 +1,5 @@
+import { classifyAt, scanDocument } from './lexer';
+import type { LexConfig } from './lexer';
 import { unsupported } from './types';
 import type { DocumentSnapshot, ExpressionTarget, InsertionAnchor, Unsupported } from './types';
 
@@ -8,7 +10,15 @@ export type ScanConfig = {
   commentPrefix: string;
   /** 本语言的字符串定界符. Rust 只有 `"`, 否则生命周期 `'a` 会被当成字符串开头. */
   stringDelimiters: readonly string[];
+  /** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
+  blockComment?: { open: string; close: string };
 };
+
+export const toLexConfig = (config: ScanConfig): LexConfig => ({
+  lineComment: config.commentPrefix,
+  stringDelimiters: config.stringDelimiters,
+  blockComment: config.blockComment
+});
 
 type LineState = {
   depth: number;
@@ -61,19 +71,20 @@ function scanLine(text: string, depth: number, openQuote: string | null, config:
   return { depth, openQuote: quote, commentAt, continued: /\\\s*$/.test(code) };
 }
 
-/** 判断某个 offset 落在代码, 单行注释还是字符串字面量里. */
+/**
+ * 判断某个 offset 落在代码, 注释还是字符串字面量里.
+ *
+ * 走全文档状态表而不是只看本行前缀: 跨行模板字符串, Python 三引号与块注释里的光标只有拿到
+ * 之前各行的状态才能判对. 旧实现从"本行开头, 深度归零"起算, 因此这三种情形都会被判成代码,
+ * 日志被插进字符串或注释里.
+ */
 export function classifyOffset(
   snapshot: DocumentSnapshot,
   offset: number,
   config: ScanConfig
 ): 'code' | 'comment' | 'string' {
-  const line = snapshot.lineAt(snapshot.lineOf(offset));
-  const column = Math.max(0, Math.min(offset - line.start, line.text.length));
-  const head = scanLine(line.text.slice(0, column), 0, null, config);
-  if (head.commentAt !== -1) {
-    return 'comment';
-  }
-  return head.openQuote === null ? 'code' : 'string';
+  const lexConfig = toLexConfig(config);
+  return classifyAt(snapshot, offset, scanDocument(snapshot, lexConfig), lexConfig);
 }
 
 /**

@@ -6,6 +6,7 @@ export const dartAdapter = createTemplateAdapter({
   id: 'dart',
   languageIds: ['dart'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: "'",
   escapeText: (raw, quote) => escapeLiteral(raw, quote, ['$']),
   render: ({ text, expr, q }) => `print(${q}${text} \${${expr}}${q});`

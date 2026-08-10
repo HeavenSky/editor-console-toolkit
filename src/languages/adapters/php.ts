@@ -5,6 +5,7 @@ export const phpAdapter = createTemplateAdapter({
   id: 'php',
   languageIds: ['php'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: "'",
   identifierExtra: '$',
   render: ({ text, expr, q }) => `var_dump(${q}${text}${q}, ${expr});`

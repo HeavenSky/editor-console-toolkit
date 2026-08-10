@@ -6,6 +6,7 @@ export const csharpAdapter = createTemplateAdapter({
   id: 'csharp',
   languageIds: ['csharp'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: '"',
   escapeText: (raw, quote) => doubleBraces(escapeLiteral(raw, quote)),
   render: ({ text, expr, q }) => `System.Console.WriteLine(${q}${text} {0}${q}, ${expr});`

@@ -5,6 +5,7 @@ export const swiftAdapter = createTemplateAdapter({
   id: 'swift',
   languageIds: ['swift'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: '"',
   stringDelimiters: ['"'],
   render: ({ text, expr, q }) => `print(${q}${text}${q}, ${expr})`

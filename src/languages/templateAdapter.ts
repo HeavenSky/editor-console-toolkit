@@ -32,8 +32,10 @@ export type TemplateSpec = {
   readonly quote: '"' | "'";
   /** 追加到标识符字符集的字符, 例如 PHP 的 `$`. */
   readonly identifierExtra?: string;
-  /** 字符串定界符, 默认 `"` 与 `'`. */
+  /** 字符串定界符, 默认 `"` 与 `'`. 可以是多字符, 例如 Python 的 `'''`; 匹配时长的优先. */
   readonly stringDelimiters?: readonly string[];
+  /** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
+  readonly blockComment?: { open: string; close: string };
   /** 覆盖默认转义, 用于插值语言与格式串语言. */
   readonly escapeText?: (raw: string, quote: string) => string;
   readonly render: (ctx: RenderContext) => string;
@@ -45,7 +47,8 @@ export function createTemplateAdapter(spec: TemplateSpec): LanguageAdapter {
   const identifierExtra = spec.identifierExtra ?? '';
   const scanConfig: ScanConfig = {
     commentPrefix: spec.commentPrefix,
-    stringDelimiters: spec.stringDelimiters ?? DEFAULT_DELIMITERS
+    stringDelimiters: spec.stringDelimiters ?? DEFAULT_DELIMITERS,
+    blockComment: spec.blockComment
   };
   const escape = spec.escapeText ?? ((raw: string, quote: string) => escapeLiteral(raw, quote));
   const pattern = markerPatternFor(spec.commentPrefix);

@@ -5,6 +5,7 @@ export const javascriptAdapter = createTemplateAdapter({
   id: 'javascript',
   languageIds: ['javascript', 'javascriptreact', 'typescript', 'typescriptreact'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: "'",
   stringDelimiters: ['"', "'", '`'],
   render: ({ text, expr, q }) => `console.log(${q}${text}${q}, ${expr});`

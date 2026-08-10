@@ -10,6 +10,7 @@ export const rustAdapter = createTemplateAdapter({
   id: 'rust',
   languageIds: ['rust'],
   commentPrefix: '//',
+  blockComment: { open: '/*', close: '*/' },
   quote: '"',
   stringDelimiters: ['"'],
   escapeText: (raw, quote) => doubleBraces(escapeLiteral(raw, quote)),
