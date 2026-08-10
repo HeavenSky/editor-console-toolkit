@@ -2,7 +2,7 @@ import { homedir, userInfo } from 'node:os';
 
 import * as vscode from 'vscode';
 
-import { annotateKillability, applyFilters } from '../filter';
+import { annotateKillability, summarizeFilter } from '../filter';
 import { collectAncestors } from '../protect';
 import { runCommand } from '../scan/exec';
 import { scanPorts } from '../scan/index';
@@ -12,6 +12,7 @@ import {
   createDetailItems,
   createErrorItem,
   createProcessItem,
+  createSearchItem,
   type PortItem,
 } from './item';
 
@@ -87,22 +88,28 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
         return createDetailItems(element.entry, home);
       }
 
-      if (scanError) return [createErrorItem(scanError)];
+      // 搜索行在扫描失败态也保留: 否则过滤态既看不见, 也没法就地清除。
+      if (scanError) {
+        return [createSearchItem({ search, shown: 0, total: 0 }), createErrorItem(scanError)];
+      }
 
       const config = readConfig();
-      const visible = applyFilters(entries, {
+      const { visible, total } = summarizeFilter(entries, {
         workspaceFolders: workspaceFolders(),
         hideSystemProcesses: config.hideSystemProcesses,
         systemPortMax: config.systemPortMax,
         search,
       });
 
-      return visible.map((entry) =>
-        createProcessItem(entry, {
-          home,
-          checked: entry.pid !== null && checked.has(entry.pid),
-        })
-      );
+      return [
+        createSearchItem({ search, shown: visible.length, total }),
+        ...visible.map((entry) =>
+          createProcessItem(entry, {
+            home,
+            checked: entry.pid !== null && checked.has(entry.pid),
+          })
+        ),
+      ];
     },
   };
 

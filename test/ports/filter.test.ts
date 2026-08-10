@@ -9,6 +9,7 @@ import {
   matchesSearch,
   shortenPath,
   sortEntries,
+  summarizeFilter,
 } from '../../src/ports/filter';
 import type { Listener, ProcessEntry } from '../../src/ports/types';
 
@@ -237,6 +238,47 @@ describe('applyFilters', () => {
     });
     expect(visible[0].pid).toBe(41802);
     expect(visible[0].origin).toBe('workspace');
+  });
+});
+
+describe('summarizeFilter', () => {
+  const entries = [
+    entry({ pid: 41802, cwd: '/repo/web', command: 'node vite', listeners: [tcp(5173)] }),
+    entry({ pid: 901, cwd: null, command: '/usr/sbin/sshd -D', listeners: [tcp(22)] }),
+    entry({ pid: 1201, cwd: '/srv/pg', command: 'postgres', listeners: [tcp(5432)] }),
+  ];
+
+  const options = (search: string, hideSystemProcesses = true) => ({
+    workspaceFolders: ['/repo/web'],
+    hideSystemProcesses,
+    systemPortMax: 1024,
+    search,
+  });
+
+  it('total 不随搜索变化', () => {
+    expect(summarizeFilter(entries, options('')).total).toBe(2);
+    expect(summarizeFilter(entries, options('5432')).total).toBe(2);
+    expect(summarizeFilter(entries, options('nothing-matches')).total).toBe(2);
+  });
+
+  it('visible 跟随搜索收敛', () => {
+    const summary = summarizeFilter(entries, options('5432'));
+    expect(summary.visible.map((item) => item.pid)).toEqual([1201]);
+    expect(summary.total).toBe(2);
+  });
+
+  it('被系统项过滤掉的条目不计入 total', () => {
+    // 分母是"搜索之前能看到的条数", 所以隐藏掉的 sshd 不该出现在分母里。
+    expect(summarizeFilter(entries, options('', true)).total).toBe(2);
+    expect(summarizeFilter(entries, options('', false)).total).toBe(3);
+  });
+
+  it('visible 的顺序与 applyFilters 在同参数下一致', () => {
+    const summary = summarizeFilter(entries, options(''));
+    expect(summary.visible.map((item) => item.pid)).toEqual(
+      applyFilters(entries, options('')).map((item) => item.pid)
+    );
+    expect(summary.visible[0].origin).toBe('workspace');
   });
 });
 

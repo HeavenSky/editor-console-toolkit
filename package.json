@@ -115,30 +115,25 @@
           "group": "navigation@1"
         },
         {
-          "command": "editorConsoleToolkit.ports.search",
+          "command": "editorConsoleToolkit.ports.toggleSystemProcesses",
           "when": "view == editorConsoleToolkit.ports.view",
           "group": "navigation@2"
         },
         {
-          "command": "editorConsoleToolkit.ports.clearSearch",
-          "when": "view == editorConsoleToolkit.ports.view",
-          "group": "navigation@3"
-        },
-        {
-          "command": "editorConsoleToolkit.ports.toggleSystemProcesses",
-          "when": "view == editorConsoleToolkit.ports.view",
-          "group": "navigation@4"
-        },
-        {
           "command": "editorConsoleToolkit.ports.refresh",
           "when": "view == editorConsoleToolkit.ports.view",
-          "group": "navigation@5"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
           "command": "editorConsoleToolkit.ports.killOne",
           "when": "view == editorConsoleToolkit.ports.view && viewItem == portProcess",
+          "group": "inline"
+        },
+        {
+          "command": "editorConsoleToolkit.ports.clearSearch",
+          "when": "view == editorConsoleToolkit.ports.view && viewItem == portSearchActive",
           "group": "inline"
         }
       ]

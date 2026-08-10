@@ -43,7 +43,7 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 **提交前清理.** 执行 **控制台工具箱: 切换全部 Console 日志**, 把本插件在当前文件生成的日志全部注释掉 — 再执行一次就恢复. 任何时候都不会真的删除.
 
-**释放一个端口.** 点开活动栏的 **端口工具箱** 图标, 在 **监听中的进程** 列表里找到带 `本工作区` 标记的那一行, 勾上它, 然后点视图标题栏的 🗑 按钮.
+**释放一个端口.** 点开活动栏的 **端口工具箱** 图标, 找到带 `本工作区` 标记的那一行, 勾上它, 然后点视图标题栏的 🗑 按钮.
 
 ---
 
@@ -194,10 +194,11 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 ## 端口工具箱 (Port Toolkit)
 
-点开活动栏的 **端口工具箱** 图标. **监听中的进程** 视图列出每个正在监听本机端口的进程 — **一行一个进程, 而不是一行一个端口**:
+点开活动栏的 **端口工具箱** 图标. 视图列出每个正在监听本机端口的进程 — **一行一个进程, 而不是一行一个端口**. 第一行固定是搜索行:
 
 ```text
-监听中的进程                              🗑  🔍  ⌫  ⧩  ⟳
+端口工具箱                                    🗑  ⧩  ⟳
+  🔍 搜索                       例如 3000, node, ~/repo
   ☑ node                5173, 24678  ·  本工作区
       PID: 41802  ·  PPID: 41799  ·  sky
       运行时长: 12:33
@@ -210,6 +211,15 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 ```
 
 一个进程占多个端口时只占一行, 所以**你勾了几行, 就恰好终止几个进程** — 不会重复计数, 也不会有意外.
+
+有过滤时, 搜索行会显示过滤了什么, 藏掉了多少, 并带一个清空用的 ✕:
+
+```text
+端口工具箱                                    🗑  ⧩  ⟳
+  🔍 搜索: 3000                已显示 7 项中的 2 项  ✕
+  ☑ node                3000  ·  本工作区
+  ☐ java                30001
+```
 
 ### 怎么区分进程
 
@@ -233,15 +243,19 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 | 命令 | ID | 位置 |
 | --- | --- | --- |
 | 终止已勾选的进程 (Kill Checked Processes) | `editorConsoleToolkit.ports.killSelected` | 🗑 标题栏, 命令面板 |
-| 搜索端口 (Search Ports) | `editorConsoleToolkit.ports.search` | 🔍 标题栏, 命令面板 |
-| 清除端口搜索 (Clear Port Search) | `editorConsoleToolkit.ports.clearSearch` | ⌫ 标题栏, 命令面板 |
 | 切换系统进程的显示 (Toggle System Processes) | `editorConsoleToolkit.ports.toggleSystemProcesses` | ⧩ 标题栏, 命令面板 |
 | 刷新端口列表 (Refresh Ports) | `editorConsoleToolkit.ports.refresh` | ⟳ 标题栏, 命令面板 |
+| 搜索端口 (Search Ports) | `editorConsoleToolkit.ports.search` | 点击搜索行, 命令面板 |
+| 清除端口搜索 (Clear Port Search) | `editorConsoleToolkit.ports.clearSearch` | 搜索行上的 ✕, 命令面板 |
 | 终止进程 (Kill Process) | `editorConsoleToolkit.ports.killOne` | 行内悬停, 右键菜单 |
 
 **批量终止.** 想勾多少行就勾多少行, 然后执行 **终止已勾选的进程**. 会弹出模态确认框, 逐个列出将被终止的进程, 结束后再汇总实际终止了几个. 勾选状态不会被自动刷新清掉, 所以你可以慢慢挑.
 
 **搜索** 匹配进程名, 完整命令行, PID, 工作目录以及任一端口号 — `5173`, `vite` 与 `~/repo/web` 都能命中.
+
+点搜索行即可输入. 列表边输边收敛(停顿一下才生效), **回车** 保留过滤, **Esc** 把过滤退回打开输入框之前的样子. 有过滤时搜索行显示搜索词与匹配计数, 旁边的 ✕ 用来清空; 没有过滤时本来就没什么可清, 所以 ✕ 直接不出现.
+
+有一点需要知道: **过滤不会清掉你的勾选**. 过滤之前勾上的进程, 即使这一行被过滤藏起来了也仍然是勾着的, **终止已勾选的进程** 会把它一起终止. 确认框始终逐个列出即将被终止的进程, 所以用过过滤之后请看一眼确认框.
 
 ### 终止是怎么做的
 

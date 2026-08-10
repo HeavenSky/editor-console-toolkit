@@ -156,6 +156,28 @@ export function applyFilters(entries: ProcessEntry[], options: FilterOptions): P
   return sortEntries(visible);
 }
 
+export interface FilterSummary {
+  /** 已应用全部过滤 (含搜索) 并排序后的条目。 */
+  visible: ProcessEntry[];
+  /** 仅应用归属与系统项过滤, 未应用搜索时的条目数。 */
+  total: number;
+}
+
+/**
+ * 过滤结果加上"搜索之前有多少条"的计数。
+ *
+ * 分母刻意不含搜索: 用户想知道的是"搜索让我少看到了多少", 若把搜索也算进分母,
+ * 分子分母永远相等, 这个数就没有意义了。
+ */
+export function summarizeFilter(entries: ProcessEntry[], options: FilterOptions): FilterSummary {
+  const withoutSearch = applyFilters(entries, { ...options, search: '' });
+  // applyFilters 已排好序, 而 Array.filter 保序, 因此不必再排一次。
+  return {
+    visible: withoutSearch.filter((entry) => matchesSearch(entry, options.search)),
+    total: withoutSearch.length,
+  };
+}
+
 /** 供视图展示工作目录时把 home 前缀缩成 `~`; 与过滤逻辑无关, 但同属路径处理。 */
 export function shortenPath(path: string, home: string): string {
   return home !== '' && isInside(path, home) ? `~${sep}${path.slice(home.length + 1)}` : path;

@@ -279,9 +279,9 @@ editorConsoleToolkit.ports.clearSearch
 视图与菜单:
 
 - `contributes.viewsContainers.activitybar` 一项, id `editorConsoleToolkitPorts`, 图标 `media/ports.svg`.
-- `contributes.views` 一项, id `editorConsoleToolkit.ports.view`.
-- `contributes.menus."view/title"` 五项 (killSelected, search, clearSearch, toggleSystemProcesses, refresh), 全部限定 `view == editorConsoleToolkit.ports.view`.
-- `contributes.menus."view/item/context"` 一项 (killOne), 限定 `viewItem == portProcess` —— 因此受保护项 (`portProtected`) 与详情行 (`portDetail`) 拿不到终止动作.
+- `contributes.views` 一项, id `editorConsoleToolkit.ports.view`. 视图名 (`%view.ports.name%`) 与容器标题 (`%view.ports.container%`) **取同一个值**, 这样 VS Code 的单视图容器标题只显示一段: `ViewPaneContainer.getTitle()` 在容器只有一个视图时走 `容器标题 === 视图名 ? 视图名 : "容器标题: 视图名"`, 两者不同就会显示成 `端口工具箱: 监听中的进程`.
+- `contributes.menus."view/title"` 三项 (killSelected, toggleSystemProcesses, refresh), 全部限定 `view == editorConsoleToolkit.ports.view`. search 与 clearSearch **刻意不在标题栏**: 搜索行本身就是常驻入口, 清空则做成搜索行上的 inline 动作.
+- `contributes.menus."view/item/context"` 两项, 都在 `inline` 组: killOne 限定 `viewItem == portProcess` —— 因此受保护项 (`portProtected`) 与详情行 (`portDetail`) 拿不到终止动作; clearSearch 限定 `viewItem == portSearchActive` —— 因此搜索为空时 (`portSearchIdle`) 清空按钮**根本不存在**.
 
 配置, 均为 `editorConsoleToolkit.ports.*`:
 
@@ -841,6 +841,20 @@ git tag v0.0.2 && git push origin main --tags
 未验证项:
 
 - Windows 与 Linux 的命令输出解析只有固化样例覆盖, 未在真实系统上执行过. Windows 的 PowerShell 脚本文本同样未实机运行.
+
+### 14.6 端口视图的常驻搜索行
+
+原先搜索只能在命令面板的弹窗里输入, 界面上没有任何位置显示当前搜索词, 清空按钮也无条件可点. 改动如下:
+
+- **列表首行常驻搜索行** (`src/ports/view/item.ts` 的 `createSearchItem`): 有过滤时显示搜索词与"已显示 N 项中的 M 项", 无过滤时显示提示文案; 点击该行打开输入框. 扫描失败态也保留这一行, 否则过滤态既看不见也无法就地清除.
+- **清空按钮是"隐藏"而不是"置灰"**: 树行内的 inline 按钮只能按 `viewItem` 整个显示或隐藏, 没有禁用态. VS Code 里唯一能渲染置灰禁用态的通道是命令的 `enablement`, 而它被 §10.2 的门禁禁止 (原因见 §5.2: `enablement` 为假的命令会从命令面板**整体消失**而非置灰). 因此"搜索为空时不可点"实现为 `contextValue` 从 `portSearchActive` 切到 `portSearchIdle`, 按钮随之不渲染. 这条取舍已经权衡过一次, 不必再讨论.
+- **边输边过滤改用 `createInputBox`** (`src/ports/commands.ts`): `showInputBox` 拿不到 `onDidChangeValue`. 输入停顿 200ms 后应用过滤, 回车提交, Esc 把过滤退回打开输入框之前的搜索词 —— 取消语义必须自己实现, 因为实时过滤已经改过状态了.
+- **计数落在 `src/ports/filter.ts` 的 `summarizeFilter`**: 分母是"搜索之前能看到的条数", 因此系统项过滤掉的条目不计入; 分母若把搜索也算上, 分子分母永远相等, 这个数就没有意义.
+- **视图名与容器标题取同值**, 使头部只显示一段, 见 §5.4.
+
+已知行为(非缺陷): **过滤不清空勾选**. `provider.ts` 只在进程消失时清理勾选集合, 所以被过滤藏起来的已勾选进程仍会被批量终止; 安全性由终止前的模态确认兜住 —— 它逐个列出将被终止的进程. 搜索变好用之后这条路径更容易被走到, 若日后要改, 正确做法是在搜索行上显示"另有 N 项已勾选但不在当前过滤内".
+
+验证结果: `npm run typecheck` 通过; `npx vitest run` 通过, 15 文件 231 测试 (0.0.2 后为 227); `node scripts/check.mjs` 八项全通过; `npm run build` 通过, `out/extension.js` 约 28.7 KB; `npm run package` 通过, VSIX 内容断言通过.
 
 ## 15. 后续任务
 

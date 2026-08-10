@@ -13,7 +13,7 @@
   "command.ports.search": "搜索端口",
   "command.ports.clearSearch": "清除端口搜索",
   "view.ports.container": "端口工具箱",
-  "view.ports.name": "监听中的进程",
+  "view.ports.name": "端口工具箱",
   "config.ports.refreshInterval": "视图可见时重新扫描的间隔, 单位毫秒. 设为 0 则只在手动触发时刷新.",
   "config.ports.killTimeout": "发出 SIGTERM 后等待多久升级为 SIGKILL, 单位毫秒.",
   "config.ports.hideSystemProcesses": "隐藏位于系统目录下, 或全部监听端口都不超过系统端口上限的进程.",

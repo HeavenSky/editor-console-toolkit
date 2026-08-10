@@ -14,6 +14,9 @@ import type { Listener, ProcessEntry } from '../types';
 export const CONTEXT_PROCESS = 'portProcess';
 export const CONTEXT_PROTECTED = 'portProtected';
 export const CONTEXT_DETAIL = 'portDetail';
+/** 搜索行的两态; 只有 active 那一态会拿到清空按钮。 */
+export const CONTEXT_SEARCH_ACTIVE = 'portSearchActive';
+export const CONTEXT_SEARCH_IDLE = 'portSearchIdle';
 
 export interface PortItem extends vscode.TreeItem {
   /** 详情子节点与错误项没有 entry。 */
@@ -127,5 +130,33 @@ export function createErrorItem(reason: string): PortItem {
   item.tooltip = reason;
   item.contextValue = CONTEXT_DETAIL;
   item.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('charts.yellow'));
+  return item;
+}
+
+/**
+ * 列表首行的搜索行。
+ *
+ * 一行同时承担三件事: 把当前搜索词显示出来(否则过滤是隐形的, 用户只会觉得"进程怎么少了"),
+ * 当作打开输入框的入口, 以及在有过滤时通过 `contextValue` 让清空按钮出现 —— 树行内的
+ * inline 按钮只能整个显示或隐藏, 没有置灰态, 所以"不能点"在这里只能实现成"不存在"。
+ */
+export function createSearchItem(state: { search: string; shown: number; total: number }): PortItem {
+  const active = state.search.trim() !== '';
+  const item = new vscode.TreeItem(
+    active ? vscode.l10n.t('Search: {0}', state.search) : vscode.l10n.t('Search'),
+    vscode.TreeItemCollapsibleState.None
+  );
+
+  item.description = active
+    ? vscode.l10n.t('{0} of {1} shown', state.shown, state.total)
+    : vscode.l10n.t('for example 3000, node, ~/repo');
+  item.tooltip = vscode.l10n.t('Filter by process name, command, PID, working directory or port');
+  item.contextValue = active ? CONTEXT_SEARCH_ACTIVE : CONTEXT_SEARCH_IDLE;
+  item.iconPath = new vscode.ThemeIcon(
+    active ? 'filter-filled' : 'search',
+    new vscode.ThemeColor(active ? 'charts.blue' : 'descriptionForeground')
+  );
+  // 这个 title 不进任何菜单, 因此刻意不走 l10n: 走了会往中文 bundle 里加一条谁都看不见的条目。
+  item.command = { command: 'editorConsoleToolkit.ports.search', title: 'Search Ports' };
   return item;
 }

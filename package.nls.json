@@ -13,7 +13,7 @@
   "command.ports.search": "Search Ports",
   "command.ports.clearSearch": "Clear Port Search",
   "view.ports.container": "Port Toolkit",
-  "view.ports.name": "Listening Processes",
+  "view.ports.name": "Port Toolkit",
   "config.ports.refreshInterval": "How often the Listening Processes view rescans, in milliseconds, while the view is visible. Set to 0 to refresh only on demand.",
   "config.ports.killTimeout": "How long to wait after SIGTERM before escalating to SIGKILL, in milliseconds.",
   "config.ports.hideSystemProcesses": "Hide processes that live in system directories or only listen on ports at or below the system port maximum.",

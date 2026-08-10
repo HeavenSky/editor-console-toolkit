@@ -29,5 +29,8 @@
   "{0} could not be terminated.": "{0} 无法终止.",
   "This process cannot be terminated.": "该进程无法终止.",
   "Filter by process name, command, PID, working directory or port": "按进程名, 命令行, PID, 工作目录或端口号过滤",
-  "for example 3000, node, ~/repo": "例如 3000, node, ~/repo"
+  "for example 3000, node, ~/repo": "例如 3000, node, ~/repo",
+  "Search": "搜索",
+  "Search: {0}": "搜索: {0}",
+  "{0} of {1} shown": "已显示 {1} 项中的 {0} 项"
 }

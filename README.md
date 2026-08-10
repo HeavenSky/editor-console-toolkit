@@ -39,7 +39,7 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 **Clean up before committing.** Run **Console Toolkit: Toggle All Console Logs** to comment out every log the extension generated in the file — run it again to bring them back. Nothing is ever deleted.
 
-**Free up a port.** Click the **Port Toolkit** icon in the Activity Bar, find the row in **Listening Processes** with the `this workspace` marker, tick it and hit the 🗑 button in the view's title bar.
+**Free up a port.** Click the **Port Toolkit** icon in the Activity Bar, find the row with the `this workspace` marker, tick it and hit the 🗑 button in the view's title bar.
 
 ---
 
@@ -190,10 +190,11 @@ Everything else gets inserted after the enclosing statement. If a placement is n
 
 ## Port Toolkit
 
-Click the **Port Toolkit** icon in the Activity Bar. The **Listening Processes** view lists every process listening on a local port — **one row per process, not one row per port**:
+Click the **Port Toolkit** icon in the Activity Bar. The view lists every process listening on a local port — **one row per process, not one row per port**. The first row is always the search row:
 
 ```text
-LISTENING PROCESSES                       🗑  🔍  ⌫  ⧩  ⟳
+PORT TOOLKIT                                  🗑  ⧩  ⟳
+  🔍 Search                for example 3000, node, ~/repo
   ☑ node                5173, 24678  ·  this workspace
       PID: 41802  ·  PPID: 41799  ·  sky
       Uptime: 12:33
@@ -206,6 +207,15 @@ LISTENING PROCESSES                       🗑  🔍  ⌫  ⧩  ⟳
 ```
 
 A process holding several ports takes a single row, so **the number of rows you tick is always the number of processes that get terminated** — no double-counting, no surprises.
+
+With a filter active, the search row shows what it is and how much it hides, and carries a ✕ to clear it:
+
+```text
+PORT TOOLKIT                                  🗑  ⧩  ⟳
+  🔍 Search: 3000                       2 of 7 shown  ✕
+  ☑ node                3000  ·  this workspace
+  ☐ java                30001
+```
 
 ### Telling processes apart
 
@@ -229,15 +239,19 @@ Type `Port Toolkit` in the Command Palette. The view's title bar carries the sam
 | Command | ID | Where |
 | --- | --- | --- |
 | Kill Checked Processes | `editorConsoleToolkit.ports.killSelected` | 🗑 title bar, palette |
-| Search Ports | `editorConsoleToolkit.ports.search` | 🔍 title bar, palette |
-| Clear Port Search | `editorConsoleToolkit.ports.clearSearch` | ⌫ title bar, palette |
 | Toggle System Processes | `editorConsoleToolkit.ports.toggleSystemProcesses` | ⧩ title bar, palette |
 | Refresh Ports | `editorConsoleToolkit.ports.refresh` | ⟳ title bar, palette |
+| Search Ports | `editorConsoleToolkit.ports.search` | click the search row, palette |
+| Clear Port Search | `editorConsoleToolkit.ports.clearSearch` | ✕ on the search row, palette |
 | Kill Process | `editorConsoleToolkit.ports.killOne` | row hover, right-click |
 
 **Terminating in batches.** Tick as many rows as you like, then run **Kill Checked Processes**. You get a modal confirmation listing exactly what will be terminated, and afterwards a summary of how many actually went down. Ticked rows survive the automatic refresh, so you can take your time.
 
 **Searching** matches process name, full command line, PID, working directory and any port number — `5173`, `vite` and `~/repo/web` all work.
+
+Click the search row to type. The list narrows as you type (after a short pause), **Enter** keeps the filter and **Esc** puts it back the way it was before you opened the box. While a filter is active the search row shows the term and the match count, and the ✕ next to it clears the filter; with no filter there is nothing to clear, so the ✕ is not there at all.
+
+One thing to know: **the filter does not clear your ticks.** A process you ticked before filtering is still ticked even when the filter hides its row, so **Kill Checked Processes** will terminate it. The confirmation dialog always lists every process that is about to go down, so read it if you have been filtering.
 
 ### How termination works
 

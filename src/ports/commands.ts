@@ -16,9 +16,15 @@ import type { CheckedTarget, PortsView } from './view/provider';
  *
  * 终止是不可逆操作, 所以每条路径都先列出将被终止的进程再二次确认; 结果按逐项成败汇总,
  * 被跳过的项明确说明原因 —— "勾了 3 个只杀了 2 个"必须让人看得见。
+ *
+ * 搜索用 `createInputBox` 而不是 `showInputBox`: 只有前者能拿到 `onDidChangeValue`, 而边输边
+ * 过滤需要它。代价是取消语义要自己实现 —— Esc 时把实时过滤退回打开输入框之前的搜索词。
  */
 
 const CONFIG_SECTION = 'editorConsoleToolkit.ports';
+
+/** 输入停顿多久才重算过滤; 过滤是纯内存计算, 防抖只为避免每个字符都重建整棵树。 */
+const SEARCH_DEBOUNCE = 200;
 
 function killTimeout(): number {
   return vscode.workspace.getConfiguration(CONFIG_SECTION).get<number>('killTimeout', 3000);
@@ -120,16 +126,48 @@ export function registerPortCommands(context: vscode.ExtensionContext, view: Por
       }
     ),
 
-    vscode.commands.registerCommand('editorConsoleToolkit.ports.search', async () => {
-      const value = await vscode.window.showInputBox({
-        prompt: vscode.l10n.t('Filter by process name, command, PID, working directory or port'),
-        placeHolder: vscode.l10n.t('for example 3000, node, ~/repo'),
-        value: view.getSearch(),
+    vscode.commands.registerCommand('editorConsoleToolkit.ports.search', () => {
+      const original = view.getSearch();
+      const input = vscode.window.createInputBox();
+      input.value = original;
+      input.prompt = vscode.l10n.t(
+        'Filter by process name, command, PID, working directory or port'
+      );
+      input.placeholder = vscode.l10n.t('for example 3000, node, ~/repo');
+
+      let accepted = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const stopTimer = (): void => {
+        if (timer !== undefined) clearTimeout(timer);
+        timer = undefined;
+      };
+
+      input.onDidChangeValue((value) => {
+        stopTimer();
+        timer = setTimeout(() => {
+          timer = undefined;
+          view.setSearch(value);
+        }, SEARCH_DEBOUNCE);
       });
-      // undefined 表示用户按了 Esc, 此时保持现有过滤不动。
-      if (value !== undefined) view.setSearch(value);
+
+      input.onDidAccept(() => {
+        accepted = true;
+        stopTimer();
+        view.setSearch(input.value);
+        input.hide();
+      });
+
+      input.onDidHide(() => {
+        stopTimer();
+        // 没走 accept 就是按了 Esc: 撤掉实时过滤已经应用的内容。
+        if (!accepted) view.setSearch(original);
+        input.dispose();
+      });
+
+      input.show();
     }),
 
+    // 从搜索行的 inline 按钮调用时会带一个 TreeItem 实参, 这里不需要它。
     vscode.commands.registerCommand('editorConsoleToolkit.ports.clearSearch', () => {
       view.setSearch('');
     })
