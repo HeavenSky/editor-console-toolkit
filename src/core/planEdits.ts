@@ -35,8 +35,11 @@ function overlaps(a: OffsetRange, b: OffsetRange): boolean {
 /**
  * 为一次命令生成编辑计划.
  *
- * Toggle: 光标在日志行上直接删该行; 否则解析目标, 锚点下一行是日志就删, 不是就插.
- * Insert: 解析目标后, 锚点下一行已有内容完全相同的日志则跳过, 否则插入.
+ * Toggle: 光标在日志行上直接删该行; 否则解析目标, 锚点相邻行是日志就删, 不是就插.
+ * Insert: 解析目标后, 锚点相邻行已有内容完全相同的日志则跳过, 否则插入.
+ *
+ * "相邻"的方向由锚点的 placement 决定: 大多数情形是锚点行的下一行, 而 switch/class 这类不能
+ * 容纳语句的块头, 日志插在该语句之前, 相邻行就是上一行.
  *
  * 全部 offset 都基于同一份原文档快照, 由调用方在一次 TextEditor.edit 中提交.
  */
@@ -72,12 +75,18 @@ export function planEdits(
     edits.push({ kind: 'delete', range });
   };
 
-  const nextLineIfLog = (anchor: InsertionAnchor): number | null => {
-    const next = anchor.line + 1;
-    if (next >= snapshot.lineCount) {
+  /**
+   * 锚点相邻的那一行如果已经是日志行, 返回它的行号.
+   *
+   * 方向跟着 placement 走: 日志插在锚点行之后时看下一行, 插在之前时看上一行. 方向错了
+   * toggle 就删不掉自己刚插的那条, 而是又插一条新的.
+   */
+  const adjacentLogLine = (anchor: InsertionAnchor): number | null => {
+    const adjacent = anchor.placement === 'before-line' ? anchor.line - 1 : anchor.line + 1;
+    if (adjacent < 0 || adjacent >= snapshot.lineCount) {
       return null;
     }
-    return isLogLine(snapshot.lineAt(next).text, pattern) ? next : null;
+    return isLogLine(snapshot.lineAt(adjacent).text, pattern) ? adjacent : null;
   };
 
   for (const selection of selections) {
@@ -105,7 +114,7 @@ export function planEdits(
       continue;
     }
 
-    const existingLog = nextLineIfLog(anchor);
+    const existingLog = adjacentLogLine(anchor);
     if (mode === 'toggle' && existingLog !== null) {
       usedAnchors.add(anchor.offset);
       pushDelete(existingLog);
@@ -128,10 +137,14 @@ export function planEdits(
     }
 
     usedAnchors.add(anchor.offset);
+    // 插在行尾时换行符在前(新起一行), 插在行首时换行符在后(把原行推下去).
     edits.push({
       kind: 'insert',
       offset: anchor.offset,
-      text: `${snapshot.eol}${anchor.indent}${body}${markerSuffix}`
+      text:
+        anchor.placement === 'before-line'
+          ? `${anchor.indent}${body}${markerSuffix}${snapshot.eol}`
+          : `${snapshot.eol}${anchor.indent}${body}${markerSuffix}`
     });
   }
 

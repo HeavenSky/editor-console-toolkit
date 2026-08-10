@@ -36,6 +36,8 @@ export type TemplateSpec = {
   readonly stringDelimiters?: readonly string[];
   /** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
   readonly blockComment?: { open: string; close: string };
+  /** 语法上不能容纳语句的块的开启关键字; 命中时日志插到该语句之前一行. */
+  readonly restrictedBlockKeywords?: readonly string[];
   /** 覆盖默认转义, 用于插值语言与格式串语言. */
   readonly escapeText?: (raw: string, quote: string) => string;
   readonly render: (ctx: RenderContext) => string;
@@ -48,7 +50,8 @@ export function createTemplateAdapter(spec: TemplateSpec): LanguageAdapter {
   const scanConfig: ScanConfig = {
     commentPrefix: spec.commentPrefix,
     stringDelimiters: spec.stringDelimiters ?? DEFAULT_DELIMITERS,
-    blockComment: spec.blockComment
+    blockComment: spec.blockComment,
+    restrictedBlockKeywords: spec.restrictedBlockKeywords
   };
   const escape = spec.escapeText ?? ((raw: string, quote: string) => escapeLiteral(raw, quote));
   const pattern = markerPatternFor(spec.commentPrefix);

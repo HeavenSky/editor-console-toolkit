@@ -1,4 +1,10 @@
-import { classifyAt, isContinuation, scanDocument, stripLineComment } from './lexer';
+import {
+  classifyAt,
+  codeBeforeDelimiter,
+  isContinuation,
+  scanDocument,
+  stripLineComment
+} from './lexer';
 import type { LexConfig, LexState, OpenDelimiter } from './lexer';
 import { unsupported } from './types';
 import type { DocumentSnapshot, ExpressionTarget, InsertionAnchor, Unsupported } from './types';
@@ -12,6 +18,13 @@ export type ScanConfig = {
   stringDelimiters: readonly string[];
   /** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
   blockComment?: { open: string; close: string };
+  /**
+   * 语法上不能容纳语句的块的开启关键字, 例如 `switch` 的 case block 与 `class` 的 body.
+   *
+   * 命中时日志插到该语句**之前**一行: `switch` 的判别式与 `extends` 的基类都在进入该语句
+   * 之前就已求值, 所以那个位置的语义是对的; 插进块里则是语法错误.
+   */
+  restrictedBlockKeywords?: readonly string[];
 };
 
 export const toLexConfig = (config: ScanConfig): LexConfig => ({
@@ -51,6 +64,20 @@ function keptDepth(stack: readonly OpenDelimiter[]): number {
     }
   }
   return 0;
+}
+
+/**
+ * 块头里是否出现了"不能容纳语句"的关键字.
+ *
+ * 只在该行已被判为块开始时才查 —— 因此 `const type = { … }` 这类字面量不会被 `type` 误命中.
+ * 用词边界匹配而不是行首前缀, 这样 `export class A {` 与 `public static class A {` 都能命中,
+ * 而 `classify(a)` 不会被 `class` 误命中.
+ */
+function isRestrictedBlock(headerCode: string, keywords: readonly string[] | undefined): boolean {
+  if (keywords === undefined || keywords.length === 0) {
+    return false;
+  }
+  return new RegExp(`(^|[^\\w$])(${keywords.join('|')})([^\\w$]|$)`).test(headerCode);
 }
 
 /**
@@ -133,6 +160,23 @@ export function locateAnchor(
     // 块是在目标行或其后新开的 —— 那才说明目标行开启了一个块, 日志要落进去.
     const opensBlock =
       innermost !== undefined && innermost.kind === 'brace-block' && innermost.line >= target.sourceLine;
+
+    if (opensBlock) {
+      const header = codeBeforeDelimiter(snapshot, lexConfig, innermost.line, innermost.column);
+      if (isRestrictedBlock(header.code, config.restrictedBlockKeywords)) {
+        // 块里放不了语句, 只能把日志放到这条语句之前. 用关键字所在的那一行, 而不是 `{` 所在
+        // 的行 —— Allman 风格下两者不是同一行, 插错会把日志夹在 `switch (x)` 与 `{` 之间.
+        const headerLine = snapshot.lineAt(header.line);
+        return {
+          kind: 'anchor',
+          line: header.line,
+          offset: headerLine.start,
+          indent: leadingWhitespace(headerLine.text),
+          placement: 'before-line'
+        };
+      }
+    }
+
     return {
       kind: 'anchor',
       line: index,

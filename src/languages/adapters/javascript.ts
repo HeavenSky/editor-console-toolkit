@@ -8,5 +8,7 @@ export const javascriptAdapter = createTemplateAdapter({
   blockComment: { open: '/*', close: '*/' },
   quote: "'",
   stringDelimiters: ['"', "'", '`'],
+  // 这些块里放不了语句: switch 只收 case, class 与 interface 只收成员, enum 与 type 是声明体。
+  restrictedBlockKeywords: ['switch', 'class', 'interface', 'enum', 'type'],
   render: ({ text, expr, q }) => `console.log(${q}${text}${q}, ${expr});`
 });

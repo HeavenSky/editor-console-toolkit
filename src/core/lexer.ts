@@ -122,29 +122,28 @@ export function stripLineComment(text: string, config: LexConfig): string {
 }
 
 /**
- * `{` 之前的代码.
+ * 定界符之前的代码, 以及它实际取自哪一行.
  *
- * `{` 单独占一行时(Allman 风格)必须回看上一行, 否则拿到的是空串, 判定只能放弃.
- * 最多回看三行, 避免在残缺文件里一路上溯.
+ * `{` 单独占一行时(Allman 风格)必须回看上一行, 否则拿到的是空串, 种类判定只能放弃, 而且
+ * `switch` 这类关键字也会查不到. 最多回看三行, 避免在残缺文件里一路上溯.
  */
-function codeBeforeBrace(
+export function codeBeforeDelimiter(
   snapshot: DocumentSnapshot,
   config: LexConfig,
   line: number,
-  column: number,
-  text: string
-): string {
-  const head = text.slice(0, column);
+  column: number
+): { line: number; code: string } {
+  const head = snapshot.lineAt(line).text.slice(0, column);
   if (head.trim() !== '') {
-    return head;
+    return { line, code: head };
   }
   for (let probe = line - 1; probe >= 0 && line - probe <= 3; probe--) {
     const previous = stripLineComment(snapshot.lineAt(probe).text, config);
     if (previous.trim() !== '') {
-      return previous;
+      return { line: probe, code: previous };
     }
   }
-  return '';
+  return { line, code: '' };
 }
 
 /**
@@ -212,7 +211,7 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
       } else if (ch === '[') {
         stack.push({ kind: 'bracket', line, column: i });
       } else if (ch === '{') {
-        const kind = classifyBrace(codeBeforeBrace(snapshot, config, line, i, text));
+        const kind = classifyBrace(codeBeforeDelimiter(snapshot, config, line, i).code);
         // 判不出来按字面量处理, 理由见 classifyBrace 的注释.
         stack.push({ kind: kind === 'block' ? 'brace-block' : 'brace-literal', line, column: i });
       } else if (ch === ')' || ch === ']' || ch === '}') {

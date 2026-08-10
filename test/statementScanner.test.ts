@@ -189,6 +189,31 @@ describe('locateAnchor 块内插入', () => {
     expect(anchor.indent).toBe('  ');
   });
 
+  it('不能容纳语句的块头改为插到该语句之前', () => {
+    const restricted: ScanConfig = { ...JS, restrictedBlockKeywords: ['switch', 'class'] };
+
+    const sw = anchorOf('switch (kind) {\n  case 1:\n}\n', 'kind', restricted);
+    expect(sw.line).toBe(0);
+    expect(sw.placement).toBe('before-line');
+
+    const cls = anchorOf('export class A {\n  run() {}\n}\n', 'class A', restricted);
+    expect(cls.placement).toBe('before-line');
+    expect(cls.line).toBe(0);
+  });
+
+  it('Allman 风格的受限块取关键字所在行, 而不是花括号所在行', () => {
+    const restricted: ScanConfig = { ...JS, restrictedBlockKeywords: ['switch'] };
+    const anchor = anchorOf('  switch (kind)\n  {\n    case 1:\n  }\n', 'kind', restricted);
+    expect(anchor.line).toBe(0);
+    expect(anchor.indent).toBe('  ');
+    expect(anchor.placement).toBe('before-line');
+  });
+
+  it('未登记受限关键字的语言仍按块内插入', () => {
+    const anchor = anchorOf('switch (kind) {\n  case 1:\n}\n', 'kind', JS);
+    expect(anchor.placement).toBe('after-line');
+  });
+
   it('对象字面量不被当成块', () => {
     const anchor = anchorOf('const o = {\n  name: 1,\n};\n', 'const o', JS);
     expect(anchor.line).toBe(2);

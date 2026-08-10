@@ -67,6 +67,38 @@ describe('planEdits insert', () => {
     expect(plan.firstReason).toBe('cursor-in-comment');
   });
 
+  it('不能容纳语句的块头把日志插到该语句之前', () => {
+    // switch 的 case block 只能放 case, 插进去是语法错误; 判别式在进入 switch 之前就已求值。
+    const text = 'switch (kind) {\n  case 1:\n    run();\n}\n';
+    const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, 'kind')], 'insert');
+    expect(apply(text, plan)).toBe(
+      "console.log('[D] kind:', kind); // ect:v1\nswitch (kind) {\n  case 1:\n    run();\n}\n",
+    );
+  });
+
+  it('插到语句之前的日志同样是幂等的', () => {
+    const text = 'switch (kind) {\n  case 1:\n    run();\n}\n';
+    const once = apply(text, planEdits(snap(text), js, PREFIX, [caretIn(text, 'kind')], 'insert'));
+    const twice = apply(
+      once,
+      planEdits(snap(once), js, PREFIX, [caretIn(once, 'switch (kind')], 'insert'),
+    );
+    expect(twice).toBe(once);
+  });
+
+  it('插到语句之前的日志能被 toggle 删掉', () => {
+    const text = 'switch (kind) {\n  case 1:\n    run();\n}\n';
+    const once = apply(text, planEdits(snap(text), js, PREFIX, [caretIn(text, 'kind')], 'insert'));
+    const plan = planEdits(snap(once), js, PREFIX, [caretIn(once, 'switch (kind')], 'toggle');
+    expect(apply(once, plan)).toBe(text);
+  });
+
+  it('缩进跟随被插入语句所在行', () => {
+    const text = 'run();\n  switch (kind) {\n    case 1:\n      go();\n  }\n';
+    const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, 'kind')], 'insert');
+    expect(apply(text, plan)).toContain("\n  console.log('[D] kind:', kind); // ect:v1\n  switch");
+  });
+
   it('使用文档的 eol 作为新行的换行符', () => {
     const text = 'const user = 1;\r\n';
     const plan = planEdits(snap(text, 'typescript', '\r\n'), js, PREFIX, [caretIn(text, 'user')], 'insert');
