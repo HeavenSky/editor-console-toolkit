@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { planEdits } from '../src/core/planEdits';
 import { doubleBraces, escapeLiteral } from '../src/languages/escape';
 import { getAdapter } from '../src/languages/registry';
+
+import { apply, caretIn, snap } from './helpers';
 
 /** 渲染某语言的日志正文; label 与 expression 固定, 只观察语言差异。 */
 function body(languageId: string, label = 'user', expression = 'user', prefix = '[D]'): string {
@@ -122,6 +125,57 @@ describe('可见文本的转义', () => {
 
   it('kotlin 可见文本里的 $ 被转义', () => {
     expect(body('kotlin', 'cost$', 'cost')).toBe('println("[D] cost\\$: ${cost}")');
+  });
+});
+
+describe('块语法按语言配置', () => {
+  /**
+   * 逐语言的端到端断言。
+   *
+   * `blockStyle` 存在适配器闭包里, 从 LanguageAdapter 读不到, 所以断言行为而不是配置值 ——
+   * 反正真正要保证的是"日志落在块内且缩进对", 而不是某个字段等于某个字符串。
+   */
+  function insert(languageId: string, text: string, needle: string): string {
+    const adapter = getAdapter(languageId);
+    if (!adapter) throw new Error(`没有 ${languageId} 的适配器`);
+    const snapshot = snap(text, languageId);
+    return apply(text, planEdits(snapshot, adapter, '[D]', [caretIn(text, needle)], 'insert'));
+  }
+
+  it('花括号语言: 日志落在块内第一行', () => {
+    expect(insert('java', 'void f(int value) {\n\tuse(value);\n}\n', 'value')).toBe(
+      'void f(int value) {\n\tSystem.out.println("[D] value: " + String.valueOf(value)); // ect:v1\n\tuse(value);\n}\n',
+    );
+    expect(insert('rust', 'fn f(value: i32) {\n\tuse(value);\n}\n', 'value')).toBe(
+      'fn f(value: i32) {\n\tprintln!("[D] value: {:?}", value); // ect:v1\n\tuse(value);\n}\n',
+    );
+  });
+
+  it('缩进型语言 (Python): 日志带上块内缩进, 不再是 IndentationError', () => {
+    expect(insert('python', 'def f(value):\n    return value\n', 'value')).toBe(
+      "def f(value):\n    print('[D] value:', value) # ect:v1\n    return value\n",
+    );
+  });
+
+  it('关键字型语言 (Ruby / Lua / Elixir): 日志落在块内', () => {
+    expect(insert('ruby', "def f(value)\n  value\nend\n", 'value')).toBe(
+      'def f(value)\n  puts "[D] value: #{(value).inspect}" # ect:v1\n  value\nend\n',
+    );
+    expect(insert('lua', 'function f(value)\n\treturn value\nend\n', 'value')).toBe(
+      'function f(value)\n\tprint("[D] value:", value) -- ect:v1\n\treturn value\nend\n',
+    );
+    expect(insert('elixir', 'def f(value) do\n\tvalue\nend\n', 'value')).toBe(
+      'def f(value) do\n\tIO.inspect(value, label: "[D] value") # ect:v1\n\tvalue\nend\n',
+    );
+  });
+
+  it('受限块按语言各自登记: Rust 的 match, Ruby 的 case', () => {
+    expect(insert('rust', 'match kind {\n\t1 => go(),\n}\n', 'kind')).toBe(
+      'println!("[D] kind: {:?}", kind); // ect:v1\nmatch kind {\n\t1 => go(),\n}\n',
+    );
+    expect(insert('ruby', "case kind\nwhen 1\n  go\nend\n", 'kind')).toBe(
+      'puts "[D] kind: #{(kind).inspect}" # ect:v1\ncase kind\nwhen 1\n  go\nend\n',
+    );
   });
 });
 

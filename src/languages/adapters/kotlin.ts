@@ -8,6 +8,7 @@ export const kotlinAdapter = createTemplateAdapter({
   commentPrefix: '//',
   blockComment: { open: '/*', close: '*/' },
   quote: '"',
+  restrictedBlockKeywords: ['when', 'class', 'interface', 'object', 'enum'],
   escapeText: (raw, quote) => escapeLiteral(raw, quote, ['$']),
   render: ({ text, expr }) => `println("${text} \${${expr}}")`
 });

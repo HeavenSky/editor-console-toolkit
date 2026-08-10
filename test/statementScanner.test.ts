@@ -221,6 +221,85 @@ describe('locateAnchor 块内插入', () => {
   });
 });
 
+describe('locateAnchor 非花括号语言的块', () => {
+  const PY_BLOCK: ScanConfig = { ...PY, blockStyle: 'colon-indent', restrictedBlockKeywords: ['match'] };
+  const RB: ScanConfig = {
+    commentPrefix: '#',
+    stringDelimiters: ['"', "'"],
+    blockStyle: 'keyword',
+    blockOpenKeywords: ['def', 'if', 'unless', 'while', 'case', 'do'],
+    restrictedBlockKeywords: ['case'],
+  };
+  const LUA_BLOCK: ScanConfig = {
+    commentPrefix: '--',
+    blockComment: { open: '--[[', close: ']]' },
+    stringDelimiters: ['"', "'"],
+    blockStyle: 'keyword',
+    blockOpenKeywords: ['function', 'if', 'for', 'while', 'repeat', 'do'],
+  };
+  const EX: ScanConfig = {
+    commentPrefix: '#',
+    stringDelimiters: ['"'],
+    blockStyle: 'keyword',
+    blockOpenKeywords: ['def', 'defmodule', 'if', 'case'],
+    restrictedBlockKeywords: ['case'],
+  };
+
+  function anchorOf(text: string, needle: string, config: ScanConfig, languageId = 'python') {
+    const snapshot = snap(text, languageId);
+    const target = resolveSelection(snapshot, caretIn(text, needle), '');
+    if (target.kind === 'unsupported') throw new Error(`预期解析成功, 实际 ${target.code}`);
+    const anchor = locateAnchor(snapshot, target, config);
+    if (anchor.kind === 'unsupported') throw new Error(`预期定位成功, 实际 ${anchor.code}`);
+    return anchor;
+  }
+
+  it('Python 的 def 块: 日志落在块内且缩进与块内现有行一致', () => {
+    // 缩进为 0 会直接产生 IndentationError, 文件跑不起来, 所以这一条是硬性要求。
+    const anchor = anchorOf('def f(value):\n    return value\n', 'value', PY_BLOCK);
+    expect(anchor.line).toBe(0);
+    expect(anchor.indent).toBe('    ');
+  });
+
+  it('Python 的多行签名以 ): 收尾, 同样算块', () => {
+    const anchor = anchorOf('def f(\n    value\n):\n    return value\n', 'value', PY_BLOCK);
+    expect(anchor.line).toBe(2);
+    expect(anchor.indent).toBe('    ');
+  });
+
+  it('Python 的 match 是受限块, 日志插到语句之前', () => {
+    const anchor = anchorOf('match kind:\n    case 1:\n        run()\n', 'kind', PY_BLOCK);
+    expect(anchor.placement).toBe('before-line');
+    expect(anchor.line).toBe(0);
+  });
+
+  it('Ruby 的 if 与带参 do 块都算块', () => {
+    expect(anchorOf('if ready\n  run\nend\n', 'ready', RB, 'ruby').indent).toBe('  ');
+    const each = anchorOf('items.each do |item|\n  use(item)\nend\n', 'item', RB, 'ruby');
+    expect(each.line).toBe(0);
+    expect(each.indent).toBe('  ');
+  });
+
+  it('Ruby 的修饰符写法与 endless method 不算块', () => {
+    expect(anchorOf('run if ready\nnext_call\n', 'ready', RB, 'ruby').indent).toBe('');
+    expect(anchorOf('def f(v) = v\nnext_call\n', 'v) = v', RB, 'ruby').placement).toBe('after-line');
+  });
+
+  it('Lua 的 function 块算块', () => {
+    const anchor = anchorOf('function f(value)\n\treturn value\nend\n', 'value', LUA_BLOCK, 'lua');
+    expect(anchor.line).toBe(0);
+    expect(anchor.indent).toBe('\t');
+  });
+
+  it('Elixir 的 do 块算块, 但 , do: 单行写法不算', () => {
+    const block = anchorOf('def f(value) do\n\tvalue\nend\n', 'value', EX, 'elixir');
+    expect(block.indent).toBe('\t');
+    const inline = anchorOf('def f(value), do: value\nnext_call\n', 'value), do', EX, 'elixir');
+    expect(inline.placement).toBe('after-line');
+    expect(inline.indent).toBe('');
+  });
+});
+
 describe('locateAnchor 缩进与兜底', () => {
   it('缩进取目标所在行的前导空白, 而不是锚点行的', () => {
     const text = '    const v = f(\n      a\n    );\n';

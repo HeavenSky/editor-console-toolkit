@@ -25,6 +25,15 @@ export type ScanConfig = {
    * 之前就已求值, 所以那个位置的语义是对的; 插进块里则是语法错误.
    */
   restrictedBlockKeywords?: readonly string[];
+  /**
+   * 块的语法形态, 默认花括号.
+   *
+   * `colon-indent` 是 Python: 行尾 `:` 开块, 块体靠缩进. `keyword` 是 Ruby / Lua / Elixir:
+   * 靠 `do` / `then` 或行首关键字开块, 用 `end` 收尾.
+   */
+  blockStyle?: 'brace' | 'colon-indent' | 'keyword';
+  /** `keyword` 形态下能开块的行首关键字. */
+  blockOpenKeywords?: readonly string[];
 };
 
 export const toLexConfig = (config: ScanConfig): LexConfig => ({
@@ -78,6 +87,38 @@ function isRestrictedBlock(headerCode: string, keywords: readonly string[] | und
     return false;
   }
   return new RegExp(`(^|[^\\w$])(${keywords.join('|')})([^\\w$]|$)`).test(headerCode);
+}
+
+/**
+ * 非花括号语言的块开始判定; 判定对象是语句的收尾行本身.
+ *
+ * 缩进型看行尾的 `:`, 因此 `def f(\n  value\n):` 这种多行签名也能命中 —— 收尾行正是 `):`.
+ * 关键字型看行尾的 `do` / `then` 或行首关键字, 但要排除两种压成一行的写法:
+ * Elixir 的 `def f(v), do: v` 与 Ruby 的 endless method `def f(v) = v`, 它们没有块体.
+ */
+function opensStyleBlock(code: string, config: ScanConfig): boolean {
+  const trimmed = code.trim();
+  if (trimmed === '') {
+    return false;
+  }
+  if (config.blockStyle === 'colon-indent') {
+    return trimmed.endsWith(':');
+  }
+  if (config.blockStyle !== 'keyword') {
+    return false;
+  }
+  if (/(^|[^\w?!])do:/.test(trimmed)) {
+    return false;
+  }
+  if (/^def\b[^=]*=/.test(trimmed)) {
+    return false;
+  }
+  // `... do`, `... do |item|`, `... then` 都是块开始.
+  if (/\bdo(\s*\|[^|]*\|)?$/.test(trimmed) || /\bthen$/.test(trimmed)) {
+    return true;
+  }
+  const first = /^([A-Za-z_][\w?!]*)/.exec(trimmed)?.[1];
+  return first !== undefined && (config.blockOpenKeywords ?? []).includes(first);
 }
 
 /**
@@ -152,38 +193,54 @@ export function locateAnchor(
     const code = stripLineComment(line.text, lexConfig);
     const nextCode =
       index + 1 < snapshot.lineCount ? stripLineComment(snapshot.lineAt(index + 1).text, lexConfig) : '';
-    if (isContinuation(code, nextCode)) {
+    // 块开始判定必须先于续行判定: Ruby 的 `items.each do |item|` 以 `|` 收尾, 而 `|` 是续行符,
+    // 顺序反了这行就会被当成未结束的语句, 日志被推到块外.
+    const opensStyleBlockHere = opensStyleBlock(code, config);
+    if (!opensStyleBlockHere && isContinuation(code, nextCode)) {
       continue;
     }
 
-    const innermost = exit.stack[exit.stack.length - 1];
-    // 块是在目标行或其后新开的 —— 那才说明目标行开启了一个块, 日志要落进去.
-    const opensBlock =
-      innermost !== undefined && innermost.kind === 'brace-block' && innermost.line >= target.sourceLine;
-
-    if (opensBlock) {
-      const header = codeBeforeDelimiter(snapshot, lexConfig, innermost.line, innermost.column);
-      if (isRestrictedBlock(header.code, config.restrictedBlockKeywords)) {
-        // 块里放不了语句, 只能把日志放到这条语句之前. 用关键字所在的那一行, 而不是 `{` 所在
-        // 的行 —— Allman 风格下两者不是同一行, 插错会把日志夹在 `switch (x)` 与 `{` 之间.
-        const headerLine = snapshot.lineAt(header.line);
-        return {
-          kind: 'anchor',
-          line: header.line,
-          offset: headerLine.start,
-          indent: leadingWhitespace(headerLine.text),
-          placement: 'before-line'
-        };
-      }
-    }
-
-    return {
+    /** 块里放不了语句, 只能把日志放到这条语句之前. */
+    const beforeLine = (at: number): InsertionAnchor => {
+      const header = snapshot.lineAt(at);
+      return {
+        kind: 'anchor',
+        line: at,
+        offset: header.start,
+        indent: leadingWhitespace(header.text),
+        placement: 'before-line'
+      };
+    };
+    const afterLine = (indent: string): InsertionAnchor => ({
       kind: 'anchor',
       line: index,
       offset: line.end,
-      indent: opensBlock ? blockIndent(snapshot, index, innermost.line) : targetIndent,
+      indent,
       placement: 'after-line'
-    };
+    });
+
+    const innermost = exit.stack[exit.stack.length - 1];
+    // 块是在目标行或其后新开的 —— 那才说明目标行开启了一个块, 日志要落进去.
+    const opensBraceBlock =
+      innermost !== undefined && innermost.kind === 'brace-block' && innermost.line >= target.sourceLine;
+
+    if (opensBraceBlock) {
+      // 关键字要从 `{` 往回找: Allman 风格下 `switch (x)` 与 `{` 不在同一行, 插错位置会把
+      // 日志夹在两者之间.
+      const header = codeBeforeDelimiter(snapshot, lexConfig, innermost.line, innermost.column);
+      return isRestrictedBlock(header.code, config.restrictedBlockKeywords)
+        ? beforeLine(header.line)
+        : afterLine(blockIndent(snapshot, index, innermost.line));
+    }
+
+    // 缩进型与关键字型语言的块头就是收尾这一行本身.
+    if (opensStyleBlockHere) {
+      return isRestrictedBlock(code, config.restrictedBlockKeywords)
+        ? beforeLine(index)
+        : afterLine(blockIndent(snapshot, index, index));
+    }
+
+    return afterLine(targetIndent);
   }
 
   return unsupported('unbalanced-syntax');

@@ -38,6 +38,10 @@ export type TemplateSpec = {
   readonly blockComment?: { open: string; close: string };
   /** 语法上不能容纳语句的块的开启关键字; 命中时日志插到该语句之前一行. */
   readonly restrictedBlockKeywords?: readonly string[];
+  /** 块的语法形态, 默认花括号; Python 用 `colon-indent`, Ruby/Lua/Elixir 用 `keyword`. */
+  readonly blockStyle?: 'brace' | 'colon-indent' | 'keyword';
+  /** `keyword` 形态下能开块的行首关键字. */
+  readonly blockOpenKeywords?: readonly string[];
   /** 覆盖默认转义, 用于插值语言与格式串语言. */
   readonly escapeText?: (raw: string, quote: string) => string;
   readonly render: (ctx: RenderContext) => string;
@@ -51,7 +55,9 @@ export function createTemplateAdapter(spec: TemplateSpec): LanguageAdapter {
     commentPrefix: spec.commentPrefix,
     stringDelimiters: spec.stringDelimiters ?? DEFAULT_DELIMITERS,
     blockComment: spec.blockComment,
-    restrictedBlockKeywords: spec.restrictedBlockKeywords
+    restrictedBlockKeywords: spec.restrictedBlockKeywords,
+    blockStyle: spec.blockStyle,
+    blockOpenKeywords: spec.blockOpenKeywords
   };
   const escape = spec.escapeText ?? ((raw: string, quote: string) => escapeLiteral(raw, quote));
   const pattern = markerPatternFor(spec.commentPrefix);

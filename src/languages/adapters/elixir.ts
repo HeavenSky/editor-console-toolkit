@@ -7,6 +7,9 @@ export const elixirAdapter = createTemplateAdapter({
   languageIds: ['elixir'],
   commentPrefix: '#',
   quote: '"',
+  blockStyle: 'keyword',
+  blockOpenKeywords: ['def', 'defp', 'defmodule', 'if', 'unless', 'case', 'cond', 'receive', 'do'],
+  restrictedBlockKeywords: ['case', 'cond', 'receive'],
   escapeText: (raw, quote) => escapeLiteral(raw, quote, ['#']),
   render: ({ bareText, expr, q }) => `IO.inspect(${expr}, label: ${q}${bareText}${q})`
 });

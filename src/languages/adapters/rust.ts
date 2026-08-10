@@ -12,6 +12,7 @@ export const rustAdapter = createTemplateAdapter({
   commentPrefix: '//',
   blockComment: { open: '/*', close: '*/' },
   quote: '"',
+  restrictedBlockKeywords: ['match', 'impl', 'struct', 'enum', 'trait'],
   stringDelimiters: ['"'],
   escapeText: (raw, quote) => doubleBraces(escapeLiteral(raw, quote)),
   render: ({ text, expr, q }) => `println!(${q}${text} {:?}${q}, ${expr});`

@@ -8,6 +8,7 @@ export const csharpAdapter = createTemplateAdapter({
   commentPrefix: '//',
   blockComment: { open: '/*', close: '*/' },
   quote: '"',
+  restrictedBlockKeywords: ['switch', 'class', 'struct', 'interface', 'enum', 'record'],
   escapeText: (raw, quote) => doubleBraces(escapeLiteral(raw, quote)),
   render: ({ text, expr, q }) => `System.Console.WriteLine(${q}${text} {0}${q}, ${expr});`
 });

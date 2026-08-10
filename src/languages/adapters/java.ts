@@ -7,5 +7,6 @@ export const javaAdapter = createTemplateAdapter({
   commentPrefix: '//',
   blockComment: { open: '/*', close: '*/' },
   quote: '"',
+  restrictedBlockKeywords: ['switch', 'class', 'interface', 'enum', 'record'],
   render: ({ text, expr, q }) => `System.out.println(${q}${text} ${q} + String.valueOf(${expr}));`
 });

@@ -7,6 +7,7 @@ export const phpAdapter = createTemplateAdapter({
   commentPrefix: '//',
   blockComment: { open: '/*', close: '*/' },
   quote: "'",
+  restrictedBlockKeywords: ['switch', 'class', 'interface', 'trait', 'enum'],
   identifierExtra: '$',
   render: ({ text, expr, q }) => `var_dump(${q}${text}${q}, ${expr});`
 });

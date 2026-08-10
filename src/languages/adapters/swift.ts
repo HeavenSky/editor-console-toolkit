@@ -7,6 +7,7 @@ export const swiftAdapter = createTemplateAdapter({
   commentPrefix: '//',
   blockComment: { open: '/*', close: '*/' },
   quote: '"',
+  restrictedBlockKeywords: ['switch', 'class', 'struct', 'enum', 'protocol', 'extension'],
   stringDelimiters: ['"'],
   render: ({ text, expr, q }) => `print(${q}${text}${q}, ${expr})`
 });

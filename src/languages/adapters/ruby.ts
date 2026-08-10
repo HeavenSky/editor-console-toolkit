@@ -7,6 +7,9 @@ export const rubyAdapter = createTemplateAdapter({
   languageIds: ['ruby'],
   commentPrefix: '#',
   quote: '"',
+  blockStyle: 'keyword',
+  blockOpenKeywords: ['def', 'if', 'unless', 'while', 'until', 'case', 'begin', 'module', 'class', 'do'],
+  restrictedBlockKeywords: ['case'],
   escapeText: (raw, quote) => escapeLiteral(raw, quote, ['#']),
   render: ({ text, expr }) => `puts "${text} #{(${expr}).inspect}"`
 });

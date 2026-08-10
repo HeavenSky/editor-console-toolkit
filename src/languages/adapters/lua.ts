@@ -6,5 +6,8 @@ export const luaAdapter = createTemplateAdapter({
   commentPrefix: '--',
   blockComment: { open: '--[[', close: ']]' },
   quote: '"',
+  blockStyle: 'keyword',
+  blockOpenKeywords: ['function', 'if', 'for', 'while', 'repeat', 'do'],
+  restrictedBlockKeywords: [],
   render: ({ text, expr, q }) => `print(${q}${text}${q}, ${expr})`
 });
