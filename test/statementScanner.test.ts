@@ -209,6 +209,27 @@ describe('locateAnchor 块内插入', () => {
     expect(anchor.placement).toBe('before-line');
   });
 
+  it('属性名与受限关键字同名时不误判', () => {
+    // `input.type` 里的 `type` 不是块关键字; 误判会让每个带 .type 的条件头都被推到语句之前。
+    const restricted: ScanConfig = {
+      ...JS,
+      restrictedBlockKeywords: ['switch', 'class', 'interface', 'type'],
+    };
+    const anchor = anchorOf('if (input.type === "file") {\n\trun();\n}\n', '(input', restricted);
+    expect(anchor.placement).toBe('after-line');
+    expect(anchor.line).toBe(0);
+
+    // `interface X {` 的花括号是块, 因此受限判定生效。
+    expect(anchorOf('interface X {\n  a: number;\n}\n', 'interface X', restricted).placement).toBe(
+      'before-line',
+    );
+
+    // `type X = {` 的花括号跟在 `=` 之后, 按字面量处理(D2 的保守退化), 日志落在整条语句之后。
+    const literal = anchorOf('type X = {\n  a: 1,\n};\n', 'type X', restricted);
+    expect(literal.placement).toBe('after-line');
+    expect(literal.line).toBe(2);
+  });
+
   it('未登记受限关键字的语言仍按块内插入', () => {
     const anchor = anchorOf('switch (kind) {\n  case 1:\n}\n', 'kind', JS);
     expect(anchor.placement).toBe('after-line');

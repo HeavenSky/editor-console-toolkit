@@ -79,14 +79,15 @@ function keptDepth(stack: readonly OpenDelimiter[]): number {
  * 块头里是否出现了"不能容纳语句"的关键字.
  *
  * 只在该行已被判为块开始时才查 —— 因此 `const type = { … }` 这类字面量不会被 `type` 误命中.
- * 用词边界匹配而不是行首前缀, 这样 `export class A {` 与 `public static class A {` 都能命中,
- * 而 `classify(a)` 不会被 `class` 误命中.
+ * 匹配的是"独立成词且不是属性名"的关键字, 因此 `export class A {` 与 `const A = class {` 都能
+ * 命中, 而 `classify(a)` 与 `if (input.type === "file")` 都不会 —— 后者若把 `.type` 也算上,
+ * 每个带 `.type` 的条件头都会被误判成受限块.
  */
 function isRestrictedBlock(headerCode: string, keywords: readonly string[] | undefined): boolean {
   if (keywords === undefined || keywords.length === 0) {
     return false;
   }
-  return new RegExp(`(^|[^\\w$])(${keywords.join('|')})([^\\w$]|$)`).test(headerCode);
+  return new RegExp(`(^|[\\s(;{,=])(${keywords.join('|')})([^\\w$]|$)`).test(headerCode);
 }
 
 /**
@@ -170,8 +171,18 @@ export function locateAnchor(
     return unsupported('cursor-in-string');
   }
 
-  const targetIndent = leadingWhitespace(snapshot.lineAt(target.sourceLine).text);
-  const kept = keptDepth(states[target.sourceLine].stack);
+  const entryStack = states[target.sourceLine].stack;
+  const kept = keptDepth(entryStack);
+  /**
+   * 语句首行的缩进.
+   *
+   * 取"最外层还需要闭合的定界符"所在的行, 而不是目标所在的行: 目标落在多行调用的某个参数上时,
+   * 那一行是缩进过的, 拿它的缩进会让日志与 `);` 对不齐. 目标行本身就是语句首行时两者相同,
+   * 因此"缩进跟随目标行"的既有行为没有改变.
+   */
+  const statementIndent = leadingWhitespace(
+    snapshot.lineAt(entryStack[kept]?.line ?? target.sourceLine).text
+  );
   const lastLine = Math.min(target.sourceLine + MAX_STATEMENT_LINES, snapshot.lineCount) - 1;
 
   for (let index = target.sourceLine; index <= lastLine; index++) {
@@ -181,7 +192,7 @@ export function locateAnchor(
     // 弹出了目标所在的块 —— 只可能出现在语法残缺的文件里. 就地收尾, 不继续向下扫,
     // 否则会一路扫到 MAX_STATEMENT_LINES 然后报"找不到安全位置".
     if (exit.stack.length < kept) {
-      return { kind: 'anchor', line: index, offset: line.end, indent: targetIndent, placement: 'after-line' };
+      return { kind: 'anchor', line: index, offset: line.end, indent: statementIndent, placement: 'after-line' };
     }
 
     // 最内层块之上还有没闭合的括号或字面量时不能收尾.
@@ -240,7 +251,7 @@ export function locateAnchor(
         : afterLine(blockIndent(snapshot, index, index));
     }
 
-    return afterLine(targetIndent);
+    return afterLine(statementIndent);
   }
 
   return unsupported('unbalanced-syntax');
