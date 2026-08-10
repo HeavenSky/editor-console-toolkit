@@ -46,7 +46,7 @@
 
 - 只处理当前活动文本编辑器.
 - 只处理显式单行选择, 或光标下可提取的表达式.
-- 插入点为目标表达式所属完整逻辑语句的下一行, 沿用锚点行缩进.
+- 插入点由词法上下文决定: 块开始行插入块内第一条语句的位置, 不能容纳语句的块头插到该语句之前, 其余插到语句结束行之后. 规则见 §7.5.
 - 只操作带有 `ect:v1` 所有权标记的日志.
 - 不删除用户手写的 `console.log`.
 - Prefix 影响之后生成的可见文本, 不影响已插入日志的移除能力.
@@ -164,6 +164,7 @@ tsconfig.json
 │   ├── core
 │   │   ├── types.ts
 │   │   ├── snapshot.ts
+│   │   ├── lexer.ts
 │   │   ├── selectionResolver.ts
 │   │   ├── statementScanner.ts
 │   │   ├── logMarker.ts
@@ -384,9 +385,10 @@ export type ExpressionTarget = {
 
 export type InsertionAnchor = {
   kind: 'anchor';
-  line: number;           // 逻辑语句的最后一行
-  offset: number;         // 该行行尾 offset
-  indent: string;         // 目标行的前导空白
+  line: number;                                  // 语句结束行 / 块开始行 / 受限块所在行
+  offset: number;                                // after-line 取行尾, before-line 取行首
+  indent: string;                                // 新行使用的前导空白
+  placement: 'after-line' | 'before-line';       // 日志放在锚点行之后还是之前
 };
 
 export type RenderLogInput = { prefix: string; label: string; expression: string };
@@ -402,7 +404,7 @@ export type EditPlan = { edits: PlannedEdit[]; firstReason: UnsupportedCode | nu
 
 所有联合类型都带 `kind` 判别字段. `Unsupported` 是普通对象, 由 `unsupported(code)` 工厂函数构造, 不是类, 不抛异常 —— 失败沿返回值传播, 不用异常做控制流.
 
-`src/core/snapshot.ts` 的 `createSnapshot(text, languageId, eol)` 接收纯文本而非 `TextDocument`, 这是 core 层不依赖 `vscode` 的前提. 行切分按实际字符进行, 与 `eol` 参数无关 —— 文档可能混用 LF 与 CRLF, `eol` 只决定新插入行使用的换行符.
+`src/core/snapshot.ts` 的 `createSnapshot(text, languageId, eol, indentUnit)` 接收纯文本而非 `TextDocument`, 这是 core 层不依赖 `vscode` 的前提. 行切分按实际字符进行, 与 `eol` 参数无关 —— 文档可能混用 LF 与 CRLF, `eol` 只决定新插入行使用的换行符.
 
 ### 7.2 `LanguageAdapter` 与模板适配器
 
@@ -480,7 +482,7 @@ print("🎯🎯🎯 [DEBUG] user:", user) -- ect:v1
 - `markerPattern()` = `new RegExp('\\s' + escapeRegExp(commentPrefix) + '\\s*ect:v1\\s*$')`.
 - 判定"某行是本扩展日志行"的唯一条件: 该行被 `markerPattern()` 命中.
 - Marker **不含 prefix**, 因此改前缀后仍能移除此前插入的日志.
-- Marker **不含适配器 id 与哈希**. 定位精度由"日志必须位于目标锚点的紧邻下一行"这一位置约束提供, 位置约束已经足够, 再加哈希只是冗余噪音.
+- Marker **不含适配器 id 与哈希**. 定位精度由"日志必须位于锚点的紧邻一行"这一位置约束提供(方向由 `placement` 决定), 位置约束已经足够, 再加哈希只是冗余噪音.
 - 没有 marker 的用户日志绝不删除.
 - 标记位于行尾, 因此把日志整行注释掉之后标记依然有效, 这是 Toggle All 能双向工作的基础.
 - `v1` 是 schema 版本, 后续协议升级时保留旧版本解析能力.
@@ -500,13 +502,13 @@ export type CommandMode = SelectionMode | 'toggle-all'; // toggle-all 作用于�
 
 1. 若光标所在行本身被 `markerPattern()` 命中, 产出 `delete`(整行含行尾换行), 结束.
 2. 否则 `resolveTarget` → `locateInsertion`, 任一步返回 `Unsupported` 则记录原因并跳过该 selection.
-3. 若锚点的紧邻下一行被 `markerPattern()` 命中, 产出 `delete`(该行含行尾换行).
+3. 若锚点的紧邻一行(方向按 `placement`)被 `markerPattern()` 命中, 产出 `delete`(该行含行尾换行).
 4. 否则产出 `insert`.
 
 **Insert**:
 
 1. `resolveTarget` → `locateInsertion`, 失败则记录原因并跳过.
-2. 若锚点紧邻下一行被 `markerPattern()` 命中, **且**该行去掉缩进与 marker 后与本次将渲染的 `body` 完全相同, 则跳过, 避免重复插入.
+2. 若锚点紧邻一行(方向按 `placement`)被 `markerPattern()` 命中, **且**该行去掉缩进与 marker 后与本次将渲染的 `body` 完全相同, 则跳过, 避免重复插入.
 3. 否则产出 `insert`.
 
 **Toggle All**(`planToggleAllLogs`, 不看 selection 也不读 prefix):
@@ -522,7 +524,7 @@ export type CommandMode = SelectionMode | 'toggle-all'; // toggle-all 作用于�
 
 - 多个 selection 解析到同一 `anchor.offset` 时只保留第一条.
 - 多个 `delete` 的 range 重叠时只保留第一条; 不执行部分重叠删除.
-- `insert` 文本 = `eol + indent + body + ' ' + commentPrefix + ' ect:v1'`. 锚点行是文件最后一行且末尾无换行时, 该拼接自然补上一个换行.
+- `placement` 为 `after-line` 时 `insert` 文本 = `eol + indent + body + ' ' + commentPrefix + ' ect:v1'`, 锚点行是文件最后一行且末尾无换行时该拼接自然补上一个换行; 为 `before-line` 时换行符改放末尾 = `indent + body + ' ' + commentPrefix + ' ect:v1' + eol`, 插入点是锚点行行首.
 - 全部编辑在一次 `TextEditor.edit(builder => ...)` 中提交, 形成单个 undo step. `TextEditorEdit` 的所有位置都基于原文档坐标, 因此**不需要按 offset 倒序排序**.
 - 全部计算基于内存快照, 不使用 `fs`, 未保存文件同样正确.
 
@@ -540,15 +542,36 @@ export type CommandMode = SelectionMode | 'toggle-all'; // toggle-all 作用于�
 - 空选择: 以光标为中心, 按 `[A-Za-z0-9_]` 加 `identifierExtra` 向两侧扩展, 再**向左**吸收连续的 `.ident` 属性链. 只向左吸收, 因此光标停在 `user.profile.name` 的 `user` 上得到 `user`, 停在 `name` 上得到 `user.profile.name`.
 - `label` = `expression.replace(/\s+/g, ' ')`.
 
-`src/core/statementScanner.ts` 逐字符扫描, 维护圆括号 / 方括号 / 花括号深度与字符串状态(支持反斜杠转义), 单行注释按注释符截断:
+定位分两层: `src/core/lexer.ts` 负责词法状态, `src/core/statementScanner.ts` 负责锚点策略.
 
-- 从目标行向下扫描, 直到某行结束时深度归零, 不在字符串中, 且未以反斜杠续行, 该行即锚点行.
-- 字符串状态跨行保留, 因此 JS 模板字符串与 Python 三引号可以正确跨行; 真正未闭合的字符串由行数上限兜住.
-- 连续扫描超过 50 行仍未归零, 返回 `unbalanced-syntax`.
-- 光标落在单行注释区间内, 返回 `cursor-in-comment`.
-- 光标落在字符串字面量内, 返回 `cursor-in-string`.
+**`src/core/lexer.ts`** 从文件首行前缀扫描到目标行, 一次算出每行的**入口状态**(未闭合定界符栈, 未闭合字符串, 是否在块注释内), 长度为 `lineCount + 1`, 多光标共用同一张表:
 
-拒绝策略采用宽松档: **只拒绝上述 4 类明显不安全的情况**, 其余一律在锚点行之后插入. 不做"证明不在 JSX 标签 / 参数列表 / import 声明内部"的额外判定 —— 误插可由一次撤销回退, 频繁拒绝的干扰更大.
+- 定界符入栈时记录种类, 花括号必须区分 `brace-block` 与 `brace-literal`: 块不必在语句结束前闭合(日志正是要落在块内), 对象字面量必须闭合.
+- 花括号种类由 `classifyBrace` 按 `{` 之前最后一个非空片段判定: `)` / `=>` / `else` / `try` / `do` / 裸标识符判块; `=` / `(` / `,` / `:` / `[` / `return` 判字面量; **判不出来时按字面量处理**, 于是日志退化到整条语句之后 —— 位置偏外但语法一定合法, 反过来把字面量当块会直接写出坏代码.
+- `{` 独占一行(Allman 风格)时回看上一行, 最多三行, 因此 `if (x)` 与它下一行的 `{` 能被认成同一条语句.
+- 块注释开符必须先于行注释符尝试匹配: Lua 的 `--` 是 `--[[` 的前缀.
+- 字符串定界符按最长匹配优先, 因此 Python 的 `'''` 与 `"""` 不会被拆成三个单引号.
+
+**`src/core/statementScanner.ts`** 从目标行向下扫描, 在同时满足三条时收尾:
+
+1. 最内层未闭合的**块**之上没有任何未闭合的定界符 —— 少了这一条, `const v = f(` 会在目标行当场收尾, 日志被插进括号里;
+2. 不在未闭合字符串内, 也不在块注释内;
+3. 该行不是续行. 续行判定看两个方向: 行尾留运算符(`a &&`)看当前行, 行首留运算符(`? a` / `.bar()` / Allman 的 `{`)只能看下一行.
+
+收尾后按三条规则给出锚点, 由 `InsertionAnchor.placement` 表达:
+
+| 情形 | 锚点 | placement |
+| --- | --- | --- |
+| 目标行开启了可容纳语句的块 | 块内第一条语句的位置 | `after-line` |
+| 目标行开启的块**不能容纳语句**(`switch` / `class` / `match` / `impl` 等, 按语言登记) | 该语句之前一行 | `before-line` |
+| 其余 | 语句结束行之后 | `after-line` |
+
+- 缩进: 块内插入优先照抄块里已有那一行的前导空白(与文件现有风格一致, 混用 tab 与空格也不会错), 空块才回退到"块头缩进 + `snapshot.indentUnit`"; 非块插入取**语句首行**的缩进, 而不是目标所在行的 —— 目标落在多行调用的某个参数上时后者是缩进过的.
+- 块语法按语言分三形态: `brace`(默认), `colon-indent`(Python, 行尾 `:` 开块), `keyword`(Ruby / Lua / Elixir, `do` / `then` 或行首关键字开块). 关键字形态要排除 Elixir 的 `, do:` 与 Ruby 的 endless method, 它们没有块体.
+- 连续扫描超过 50 行仍未收尾, 返回 `unbalanced-syntax`.
+- 光标落在注释(含块注释)内返回 `cursor-in-comment`, 落在字符串(含跨行字符串)内返回 `cursor-in-string`.
+
+拒绝策略采用宽松档: **只拒绝上述明显不安全的情况**, 其余一律插入. 不做"证明不在 JSX 标签 / import 声明内部"的额外判定 —— 误插可由一次撤销回退, 频繁拒绝的干扰更大.
 
 ### 7.6 运行时本地化文案
 
@@ -604,7 +627,8 @@ Command Palette / 用户自绑快捷键
 - [x] ports 功能域: 采集解析层, 归属判定与自保护, 终止层, TreeView 与批量勾选, 清单贡献点与双语文案. 设计契约见 `.ai-ctx/plans/20260806_端口与进程管理能力集成.md`, 本节不重复.
 - [x] `src/core/types.ts` 与 `src/core/snapshot.ts`: 不可变 `DocumentSnapshot` 与行索引.
 - [x] `src/core/selectionResolver.ts`: 显式单行选择, 反向选择, 空选择的标识符与属性链扩展.
-- [x] `src/core/statementScanner.ts`: 括号深度与字符串状态扫描, 50 行上限, 注释/字符串内光标判定, 锚点与缩进.
+- [x] `src/core/lexer.ts`: 定界符栈(含花括号种类), 跨行字符串与块注释, 全文档状态表, 续行判定.
+- [x] `src/core/statementScanner.ts`: 语句结束判定, 块内插入, 受限块前置, 三种块语法分派, 50 行上限, 注释/字符串内光标判定, 缩进.
 - [x] `src/core/logMarker.ts`: marker 构造, 匹配与剥离.
 - [x] `languageAdapter.ts`, `escape.ts`, `templateAdapter.ts`, `registry.ts`.
 - [x] §6.1 的 12 个适配器.
@@ -655,6 +679,8 @@ readFileSync
 ```
 
 放行判定按**路径分段**比较而非字符串前缀, 因此 `src/portsy/` 不会被 `ports` 放行. 这条行为由 `test/buildGates.test.mjs` 用 `test/fixtures/gates/` 下的假仓库根钉住.
+
+`src/core/lexer.ts` 属 console 命令域(不在 `src/ports/` 下), 因此仍受 `CONSOLE_ONLY_FORBIDDEN` 全部约束; 它是纯词法计算, 不需要其中任何一个 API.
 
 `src/ports/` 刻意不使用 `node:fs`: Linux 侧读工作目录走 `readlink` 子进程而不是 `readFileSync`, 所以 `readFileSync` 不需要为 ports 域放行.
 
@@ -752,7 +778,7 @@ git tag v0.0.2 && git push origin main --tags
 
 - **不做任何自动化测试**(单元, 集成, 性能), 保留 `tsc --noEmit` 作为唯一自动质量门, 功能验证由人工安装使用完成.
 - **首版语言范围为 12 个适配器 / 15 个 languageId**; `shellscript`, `powershell`, `perl` 与 Go 在 Tier 2, SQL 在 Tier 3.
-- **Marker 采用极简形态 `<注释符> ect:v1`**, 不含适配器 id 与哈希; 定位精度由"必须位于锚点紧邻下一行"提供.
+- **Marker 采用极简形态 `<注释符> ect:v1`**, 不含适配器 id 与哈希; 定位精度由"必须位于锚点紧邻一行"提供.
 - **拒绝策略采用宽松档**, 只拒绝 §7.5 列出的 4 类明显不安全情况, 其余尽量插入.
 - **Toggle All 的语义是注释/取消注释而非删除**, 不删除任何行, 因此随时可以恢复.
 - **命令一律不加 `enablement`**, 原因见 §5.2.
@@ -855,6 +881,45 @@ git tag v0.0.2 && git push origin main --tags
 已知行为(非缺陷): **过滤不清空勾选**. `provider.ts` 只在进程消失时清理勾选集合, 所以被过滤藏起来的已勾选进程仍会被批量终止; 安全性由终止前的模态确认兜住 —— 它逐个列出将被终止的进程. 搜索变好用之后这条路径更容易被走到, 若日后要改, 正确做法是在搜索行上显示"另有 N 项已勾选但不在当前过滤内".
 
 验证结果: `npm run typecheck` 通过; `npx vitest run` 通过, 15 文件 231 测试 (0.0.2 后为 227); `node scripts/check.mjs` 八项全通过; `npm run build` 通过, `out/extension.js` 约 28.7 KB; `npm run package` 通过, VSIX 内容断言通过.
+
+### 14.7 插入位置定位的重写
+
+旧实现用"从目标行开始把括号深度归零, 向下找第一个深度归零的行"当语句结束, 这一个判据同时错在四处, 产出过 13 类错位, 其中 7 类直接把代码改坏:
+
+| 类别 | 现象 | 根因 |
+| --- | --- | --- |
+| A1–A2 | 日志被插进多行参数列表 / 对象字面量内部 | 深度从目标行归零起算, 丢掉了目标之前的上下文 |
+| A3–A4 | `a &&` 与三元续行被从中间截断 | 续行只认反斜杠 |
+| A5 | 语句被插进 `class` body | 块与表达式不分 |
+| A6–A7 | 日志被插进跨行模板字符串 / 块注释 | 分类只扫本行前缀, 没有跨行状态, 也不认 `/* */` |
+| B 类 | 函数签名, 条件头, 箭头函数体上的日志跑到块外, 变量不在作用域内 | 块开始的 `{` 被当成未闭合表达式, 一路扫到块的闭合行 |
+| C 类 | Python 缩进为 0, 直接 `IndentationError` | 完全没有非花括号语言的块概念 |
+
+重写分五个工作单元, 规则见 §7.5. 与原设计的偏差:
+
+- **新增 `src/core/lexer.ts`**: 词法状态与锚点策略分层. 状态表按整份文档算一次, N 个光标共用, 避免每个光标重扫一遍.
+- **块边界取"出口栈的最内层块"而不是"目标行入口栈"**: 否则 `list.map(item => {` 这种开在未闭合括号内的块不算块, 日志会被推到 `});` 之外 —— 而回调参数在那里根本不在作用域内.
+- **续行判定必须看下一行行首**: 三元 (`cond` / `? a` / `: b`) 与方法链的上一行行尾没有任何符号可查. `{` 也计入行首续行符, 于是 Allman 风格的 `if (x)` 与它下一行的 `{` 算同一条语句 —— 否则日志会插在两者之间, 变成 if 的唯一分支体.
+- **块开始判定必须先于续行判定**: Ruby 的 `items.each do |item|` 以 `|` 收尾, 而 `|` 是续行符; 顺序反了这一行会被当成未结束的语句.
+- **非块插入的缩进取语句首行而非目标行**: 目标落在多行调用的某个参数上时, 那一行是缩进过的, 拿它的缩进会让日志与 `);` 对不齐. 目标行本身就是语句首行时两者相同, 因此"缩进跟随目标行"的既有断言没有被推翻.
+- **受限块关键字必须排除属性名**: `if (input.type === "file") {` 里的 `type` 一度让每个带 `.type` 的条件头都被判成受限块. 匹配条件收紧为"独立成词且不是属性访问".
+- **`type X = {` 这类字面量走保守退化**: `{` 跟在 `=` 之后被判为字面量而不是块, 因此不进受限块分支, 日志落到整条语句之后 —— 位置偏外但语法合法.
+- **`DocumentSnapshot` 增 `indentUnit`** 而不是给 `LanguageAdapter.locateInsertion` 与 `planEdits` 各加一个参数: 它与 `eol` 同类, 都是由编辑器决定的文档级事实, 挂在快照上就不必让每个适配器转发.
+
+验证结果:
+
+- `npm run typecheck` 通过.
+- `npx vitest run` 通过, 17 文件 305 测试 (本次改动前为 231).
+- `node scripts/check.mjs` 八项全通过.
+- `npm run build` 通过, `out/extension.js` 约 32 KB.
+- `npm run package` 通过, VSIX 内容断言通过.
+- 真实文件核对: 以 `heaven.js` 为样本, 六个曾经错位的位置全部落到正确的块内或语句之后.
+- Python 语法校验: 五个插入样例全部通过 `python3 -c "import ast,sys;ast.parse(...)"`, 覆盖 `def` 签名, 函数体内语句, 嵌套 `for` / `if` 与类方法.
+
+未验证项:
+
+- 除 JS/TS 与 Python 外的 9 种语言 (Java, C#, Kotlin, Swift, Dart, Rust, PHP, Ruby, Lua) 只有固化样例覆盖, 未在真实项目里执行过.
+- 编辑器内的实际交互 (多光标, 撤销, 未保存缓冲区) 属人工验收.
 
 ## 15. 后续任务
 

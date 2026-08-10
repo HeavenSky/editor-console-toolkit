@@ -55,7 +55,15 @@ Type `Console Toolkit` in the Command Palette to find all three.
 | Toggle Console Log | `editorConsoleToolkit.toggleConsoleLog` | — |
 | Toggle All Console Logs | `editorConsoleToolkit.toggleAllConsoleLogs` | — |
 
-**Insert Console Log** writes a log for the current target on the line after the enclosing statement. Running it twice does nothing the second time.
+**Insert Console Log** writes a log for the current target. Where it lands depends on what the cursor is on:
+
+| Cursor is on | The log goes |
+| --- | --- |
+| a line that opens a block — a function signature, an `if` / `for` head, a callback body | **inside the block**, as its first statement, indented like the rest of the block |
+| a line that opens a block that cannot hold statements — `switch`, `class`, Rust's `match` or `impl` | on the line **before** that statement, where the value has already been evaluated |
+| anything else | after the enclosing statement, however many lines it spans |
+
+Running it twice does nothing the second time.
 
 **Toggle Console Log** inserts the log if it is missing and removes it if it is already there. It also works with the cursor on the log line itself, which is the quickest way to delete one.
 
@@ -169,7 +177,7 @@ That marker is the **only** thing that makes a line eligible for removal:
 
 - Logs you wrote by hand are never removed, even if they look identical.
 - The marker does not contain the prefix, so changing `editorConsoleToolkit.prefix` does not orphan logs you already inserted.
-- Removal also requires the log to sit directly after its target statement, so two logs for the same variable name in different places never get confused.
+- Removal also requires the log to sit on the line immediately next to its anchor, so two logs for the same variable name in different places never get confused.
 
 Ship your code with the markers gone — toggle them off, or search the workspace for `ect:v1`. The marker survives commenting, which is how **Toggle All Console Logs** finds and restores a log you commented out earlier.
 
@@ -179,12 +187,13 @@ The extension refuses to guess. It shows a warning and leaves the document untou
 
 - the selection spans more than one line;
 - the statement has unbalanced brackets or an unterminated string, or runs longer than 50 lines;
+- the cursor is inside a block comment or a multi-line string (a template literal, a Python triple-quoted string);
 - the cursor is inside a comment;
 - the cursor is inside a string literal;
 - there is no expression under the cursor;
 - the language is not supported yet.
 
-Everything else gets inserted after the enclosing statement. If a placement is not what you wanted, one undo takes it back.
+Everything else gets inserted at one of the three places in the table above. When the syntax is ambiguous — a lone `{` whose meaning cannot be told apart, for instance — the log lands after the whole statement instead of inside the block: further out than you might like, but never syntactically broken. If a placement is not what you wanted, one undo takes it back.
 
 ---
 
@@ -307,7 +316,7 @@ These are not just promises: the build fails if a timer, listener or persistent-
 | --- | --- |
 | `Alt+L` does nothing | The binding requires `editorTextFocus && !editorReadonly`. Check for a conflict in **Keyboard Shortcuts** (search `alt+l`). |
 | "Console Toolkit does not support this language yet" | The language has no adapter yet. See [Supported languages](#supported-languages) and the [Roadmap](#roadmap). |
-| A log will not toggle off | It has no `ect:v1` marker, or it is no longer on the line directly after its target statement. Remove it by hand. |
+| A log will not toggle off | It has no `ect:v1` marker, or it is no longer on the line immediately next to its anchor. Remove it by hand. |
 | The ports view is empty | Everything listening may be filtered as a system process. Run **Toggle System Processes**, or lower `systemPortMax`. |
 | A row says the process cannot be terminated | It is your editor, one of its own processes, or owned by another user. See [How termination works](#how-termination-works). |
 | "Port scan failed" row | The system refused the port lookup. The row shows the reason it gave. |
