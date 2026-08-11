@@ -1,5 +1,5 @@
 {
-  "extension.description": "为多种编程语言插入并安全切换调试输出语句, 并管理占用本机端口的进程.",
+  "extension.description": "为多种编程语言插入并安全切换调试输出语句, 管理占用本机端口的进程, 并在改动编辑器核心文件后修复校验和警告.",
   "category": "控制台工具箱",
   "command.insertConsoleLog": "插入 Console 日志",
   "command.toggleConsoleLog": "切换 Console 日志",
@@ -18,5 +18,8 @@
   "config.ports.killTimeout": "发出 SIGTERM 后等待多久升级为 SIGKILL, 单位毫秒.",
   "config.ports.hideSystemProcesses": "隐藏位于系统目录下, 或全部监听端口都不超过系统端口上限的进程.",
   "config.ports.systemPortMax": "视为系统端口的最大端口号. 只有当一个进程的全部监听端口都不超过此值时才会被隐藏.",
-  "config.ports.includeUdp": "同时列出 UDP 端点, 而不只是 TCP 监听端口."
+  "config.ports.includeUdp": "同时列出 UDP 端点, 而不只是 TCP 监听端口.",
+  "category.checksums": "校验和工具箱",
+  "command.checksums.apply": "修复校验和",
+  "command.checksums.restore": "还原校验和"
 }

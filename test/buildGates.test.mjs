@@ -43,6 +43,23 @@ describe('check-extra 的目录白名单', () => {
     const hits = apiProblems().filter((p) => p.startsWith('src/portsy/q.ts'));
     expect(hits.some((p) => p.includes('setInterval'))).toBe(true);
   });
+
+  it('在 checksums 命令域放行 readFileSync', () => {
+    // 该域要读 product.json 与核心文件; 放行的是磁盘读取, 不是整份 CONSOLE_ONLY_FORBIDDEN 的豁免。
+    const hits = apiProblems().filter((p) => p.startsWith('src/checksums/'));
+    expect(hits.some((p) => p.includes('readFileSync'))).toBe(false);
+  });
+
+  it('checksums 命令域仍报告 GLOBAL_FORBIDDEN', () => {
+    const hits = apiProblems().filter((p) => p.startsWith('src/checksums/c.ts'));
+    expect(hits.some((p) => p.includes('axios'))).toBe(true);
+  });
+
+  it('console 命令域仍报告 readFileSync', () => {
+    // 放行是按目录给的; console 域的"不读磁盘"承诺不能被 checksums 的放行顺带撬开。
+    const hits = apiProblems().filter((p) => p.startsWith('src/commands/a.ts'));
+    expect(hits.some((p) => p.includes('readFileSync'))).toBe(true);
+  });
 });
 
 describe('check-extra 的清单检查', () => {

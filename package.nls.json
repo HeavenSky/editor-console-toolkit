@@ -1,5 +1,5 @@
 {
-  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages, and manage the processes listening on your local ports.",
+  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages, manage the processes listening on your local ports, and fix the editor checksum warning after patching its core files.",
   "category": "Console Toolkit",
   "command.insertConsoleLog": "Insert Console Log",
   "command.toggleConsoleLog": "Toggle Console Log",
@@ -18,5 +18,8 @@
   "config.ports.killTimeout": "How long to wait after SIGTERM before escalating to SIGKILL, in milliseconds.",
   "config.ports.hideSystemProcesses": "Hide processes that live in system directories or only listen on ports at or below the system port maximum.",
   "config.ports.systemPortMax": "Highest port number treated as a system port. A process is only hidden when every port it listens on is at or below this value.",
-  "config.ports.includeUdp": "Also list UDP endpoints, not just TCP listeners."
+  "config.ports.includeUdp": "Also list UDP endpoints, not just TCP listeners.",
+  "category.checksums": "Checksum Toolkit",
+  "command.checksums.apply": "Fix Checksums",
+  "command.checksums.restore": "Restore Checksums"
 }

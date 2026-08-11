@@ -33,7 +33,10 @@
     "port",
     "kill process",
     "lsof",
-    "netstat"
+    "netstat",
+    "checksum",
+    "product.json",
+    "unsupported"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -88,6 +91,16 @@
         "title": "%command.ports.clearSearch%",
         "category": "%category.ports%",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "editorConsoleToolkit.checksums.apply",
+        "title": "%command.checksums.apply%",
+        "category": "%category.checksums%"
+      },
+      {
+        "command": "editorConsoleToolkit.checksums.restore",
+        "title": "%command.checksums.restore%",
+        "category": "%category.checksums%"
       }
     ],
     "viewsContainers": {

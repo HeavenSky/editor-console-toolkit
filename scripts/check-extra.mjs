@@ -1,13 +1,16 @@
 /**
  * Editor Console Toolkit 专属门禁: 钉住各功能域各自的产品承诺。
  *
- * 插件有两个功能域, 承诺不同, 所以禁止清单按目录分级:
- * - console 命令域 (`src/` 下除 `src/ports/`): 纯命令式, 零后台开销 —— 不得有常驻 UI,
+ * 插件有三个功能域, 承诺不同, 所以禁止清单按目录分级:
+ * - console 命令域 (`src/` 下除放行目录): 纯命令式, 零后台开销 —— 不得有常驻 UI,
  *   监听器, 计时器与磁盘读取;
  * - ports 视图域 (`src/ports/`): 本身就是常驻 TreeView + 轮询刷新, 上述 API 是其实现所需,
- *   因此在该目录放行, 但网络与遥测仍然全局禁止。
+ *   因此在该目录放行;
+ * - checksums 命令域 (`src/checksums/`): 仍然是纯命令式, 但要读写编辑器安装目录里的
+ *   `product.json` 与核心文件, 因此只为它放行磁盘读取。
  *
- * 分级而不是整体放开, 是为了防止日后无意给 console 命令加上监听器或计时器。
+ * 三者的网络与遥测都全局禁止。分级而不是整体放开, 是为了防止日后无意给 console 命令加上
+ * 监听器或计时器, 也为了让"哪个域可以碰磁盘"这件事留在门禁里而不是留在记忆里。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -20,7 +23,7 @@ const GLOBAL_FORBIDDEN = [
   'telemetry',
 ];
 
-/** 只在 console 命令域禁止; ports 视图域按设计需要这些 API。 */
+/** 只在 console 命令域禁止; ports 与 checksums 域按设计需要其中一部分。 */
 const CONSOLE_ONLY_FORBIDDEN = [
   'createStatusBarItem',
   'createTreeView',
@@ -33,7 +36,7 @@ const CONSOLE_ONLY_FORBIDDEN = [
 ];
 
 /** 放行 `CONSOLE_ONLY_FORBIDDEN` 的目录, 相对 `src/`。 */
-const RELAXED_DIRS = ['ports'];
+const RELAXED_DIRS = ['ports', 'checksums'];
 
 /**
  * 默认快捷键契约: 只给最高频的 insert 一个默认键, 另两条命令刻意留空由用户自己绑,
