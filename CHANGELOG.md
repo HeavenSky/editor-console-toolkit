@@ -1,6 +1,6 @@
 # Change Log
 
-## v0.0.4 2026-08-11 Checksum Toolkit
+## v0.0.4 2026-08-12 Checksum Toolkit
 
 Adds a third feature area: **Checksum Toolkit**, for silencing the editor's "installation appears to be corrupt" warning after you have patched its core files.
 
