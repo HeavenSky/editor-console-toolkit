@@ -6,12 +6,13 @@
 
 **English** · [简体中文](./README.zh-cn.md)
 
-Two everyday chores, one extension, zero runtime dependencies.
+Three everyday chores, one extension, zero runtime dependencies.
 
 | | What it does | Where you use it |
 | --- | --- | --- |
 | **Console Toolkit** | Insert a debug log for whatever is under your cursor, then toggle it — or every log in the file — back off. 15 languages. | Command Palette, `Alt+L` |
 | **Port Toolkit** | See which processes hold your local ports, tell them apart by where they were started, and terminate several at once. | Activity Bar |
+| **Checksum Toolkit** | Silence the "installation appears to be corrupt" warning after you patch the editor's own files, and put it back when you want. | Command Palette |
 
 UI in English and 简体中文, following your VS Code display language.
 
@@ -25,6 +26,8 @@ UI in English and 简体中文, following your VS Code display language.
 ### Requirements
 
 VS Code `1.101.0` or newer. Nothing else to install: there are no bundled dependencies, nothing is downloaded at runtime, and Port Toolkit reads ports through tooling that already ships with macOS, Linux and Windows.
+
+Checksum Toolkit additionally needs write access to the editor's own installation folder. Where it does not have that — typically Windows and Linux — it hands you a one-line command to run yourself instead of asking for your password.
 
 ---
 
@@ -40,6 +43,8 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 **Clean up before committing.** Run **Console Toolkit: Toggle All Console Logs** to comment out every log the extension generated in the file — run it again to bring them back. Nothing is ever deleted.
 
 **Free up a port.** Click the **Port Toolkit** icon in the Activity Bar, find the row with the `this workspace` marker, tick it and hit the 🗑 button in the view's title bar.
+
+**Silence "installation appears to be corrupt".** After patching the editor's own files, run **Checksum Toolkit: Fix Checksums**, then quit the editor completely and start it again.
 
 ---
 
@@ -301,12 +306,62 @@ When the system will not say which process owns a socket — on Linux this happe
 
 ---
 
+## Checksum Toolkit
+
+Patch VS Code's own files — a CSS/JS injection, a UI tweak — and the next start greets you with **"Your installation appears to be corrupt"** and `[Unsupported]` in the title bar: the checksums recorded in `product.json` no longer match the files on disk. This feature area recalculates them.
+
+### Commands
+
+| Command | ID |
+| --- | --- |
+| Fix Checksums | `editorConsoleToolkit.checksums.apply` |
+| Restore Checksums | `editorConsoleToolkit.checksums.restore` |
+
+Neither ships with a default keybinding.
+
+### How it works
+
+**Fix Checksums** reads `product.json` from the running editor's installation folder, recomputes the SHA-256 of every file listed under `checksums`, and writes back only the entries that actually differ. Entries whose file is missing from disk are skipped and reported instead of aborting the run. If nothing differs, nothing is written at all.
+
+Before the first write it **copies** `product.json` to `product.json.ect-orig.<version>` beside it. The new content goes to a temporary file in the same folder and is then renamed over `product.json`, so an interrupted run can never leave you with a truncated or missing `product.json` — which would be an editor that no longer starts.
+
+**Restore Checksums** writes that backup back, and only then deletes it.
+
+> **Restore returns you to the state before this extension's first fix — not to a factory-fresh `product.json`.** If checksums had already been patched by something else, that is what the backup captured. With no backup left, the way back is reinstalling the editor; your settings and extensions live elsewhere and survive that.
+
+Either command requires a **full quit and restart** of the editor afterwards. Reloading the window is not enough.
+
+Running either one also clears out backups left for *other* editor versions — only files this extension wrote itself (`product.json.ect-orig.*`), never anything else in that folder.
+
+### When the installation is not writable
+
+On Windows and Linux the installation usually sits where only an administrator can write. **This extension never elevates privileges.** It writes the fixed `product.json` into your temporary folder and hands you the single command that finishes the job:
+
+```sh
+sudo cp "…/product.json" "…/product.json.ect-orig.1.132.0" && sudo cp "/tmp/editor-console-toolkit/product.json" "…/product.json"
+```
+
+The notification carries a **Copy command** button, so it goes straight to the clipboard. On Windows it is the same command spelled `copy /Y …`, to be run from an elevated terminal.
+
+### Scope and platform support
+
+macOS, Linux and Windows, and any VS Code–compatible editor with the same installation layout (Cursor, VSCodium, Windsurf) — the folder comes from the running editor rather than from a guess.
+
+> ⚠️ Verified on real hardware on macOS only, same as Port Toolkit.
+
+The commands refuse to run, with the reason shown, in a Remote (SSH, WSL, container) window or on the web: there the extension host is not the machine holding the editor in front of you.
+
+**Patching the core files is not this extension's job** — it only stops the editor complaining about a patch you already made. An editor upgrade replaces `product.json`, so run **Fix Checksums** again after one. Modifying core files is unsupported by the vendor; using this means you know what you are doing.
+
+---
+
 ## Privacy and performance
 
 - **No telemetry, no network access.** Nothing about you or your code leaves your machine.
 - **No runtime dependencies.** The extension ships as a single bundled file.
 - **Console Toolkit is purely command-driven** — no listeners, no timers, no status bar item. It does nothing until you run one of its commands.
 - **Port Toolkit only works while you are watching it.** Its scan timer exists only while its view is visible.
+- **Checksum Toolkit touches the disk only when you run it.** No startup scan, no elevation, and nothing is written outside the editor's own installation folder and your temporary folder.
 
 These are not just promises: the build fails if a timer, listener or persistent-UI API ever appears in the console side of the codebase.
 
@@ -321,6 +376,8 @@ These are not just promises: the build fails if a timer, listener or persistent-
 | A row says the process cannot be terminated | It is your editor, one of its own processes, or owned by another user. See [How termination works](#how-termination-works). |
 | "Port scan failed" row | The system refused the port lookup. The row shows the reason it gave. |
 | The port list looks stale | The view only refreshes while visible. Hit ⟳, or check that `refreshInterval` is not `0`. |
+| "Installation appears to be corrupt" survives **Fix Checksums** | Reloading the window does not apply it — quit the editor completely and start it again. If it comes back later, an editor update rewrote `product.json`; run the command once more. |
+| "No write access to the editor installation" | Expected on Windows and Linux. The fixed file is staged in your temporary folder; run the command from the notification (**Copy command**) in a terminal with administrator rights. |
 
 ## Roadmap
 
@@ -329,7 +386,7 @@ Console Toolkit language support ships in tiers, because each language needs its
 - **Next up** — shell / zsh, PowerShell, Perl, Go, C, C++, Scala, Groovy, Clojure, R; Vue, Svelte and Astro through their `<script>` blocks; notebook cells.
 - **Later** — SQL, which has no single logging construct across dialects and so will need an explicit dialect setting rather than a risky guess.
 
-For Port Toolkit, the next step is verifying Linux and Windows on real machines.
+For Port Toolkit and Checksum Toolkit, the next step is verifying Linux and Windows on real machines — the port parsers and the not-writable-installation path are both implemented and tested, but only exercised for real on macOS.
 
 ## Release notes
 
@@ -338,3 +395,5 @@ See [CHANGELOG.md](./CHANGELOG.md).
 ## License
 
 [MIT](./LICENSE.txt)
+
+Checksum Toolkit was written from scratch, but its behaviour is derived from [vscode-fix-checksums](https://github.com/RimuruChan/vscode-fix-checksums) — MIT © Jürg Lehni 2018, MIT © RimuruChan 2024. None of its code or dependencies is bundled here.

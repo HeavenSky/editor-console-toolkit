@@ -1,5 +1,30 @@
 # Change Log
 
+## v0.0.4 2026-08-11 Checksum Toolkit
+
+Adds a third feature area: **Checksum Toolkit**, for silencing the editor's "installation appears to be corrupt" warning after you have patched its core files.
+
+### Added
+
+- **Fix Checksums** (`editorConsoleToolkit.checksums.apply`): recomputes the SHA-256 of every file listed under `checksums` in the running editor's `product.json` and writes back only the entries that actually differ. Entries whose file is missing from disk are skipped and reported instead of aborting the run; when nothing differs, nothing is written.
+- **Restore Checksums** (`editorConsoleToolkit.checksums.restore`): writes the backup back and only then deletes it, so a failure halfway through never leaves you without either file.
+- A backup is **copied** — not moved — to `product.json.ect-orig.<version>` beside the original before the first write, and is not overwritten on later runs. New content goes to a temporary file in the same folder and is renamed over `product.json`, so an interrupted run cannot produce a truncated or missing `product.json`.
+- **No privilege elevation, ever.** Where the installation is not writable — typically Windows and Linux — the fixed `product.json` is staged in your temporary folder and the notification hands you the single equivalent command, with a **Copy command** button that puts it on the clipboard.
+- Backups left behind by *other* editor versions are cleaned up when you run either command. Only files this extension wrote itself (`product.json.ect-orig.*`) are ever removed.
+- Both commands refuse to run, with the reason shown, when the extension host is not the machine holding the editor: Remote (SSH, WSL, container) windows, the web, or any case where the editor cannot report its installation folder.
+- 36 tests covering the checksum algorithm against fixed vectors, and the apply/restore ordering, permission-denied and partial-failure paths against an in-memory filesystem — 344 tests in total.
+
+### Notes
+
+- **Either command needs a full quit and restart of the editor.** Reloading the window does not apply the change; this is a property of how the editor verifies itself, not something the extension can work around.
+- **Restore goes back to the state before this extension's first fix — not to a factory-fresh `product.json`.** If checksums had already been patched by another tool, that is what the backup captured. With no backup left, the way back is reinstalling the editor.
+- The first fix reformats `product.json`: a JSON round-trip expands the short single-line arrays the editor ships with, which makes the file about 4KB larger. The data is equivalent, and the byte-exact original is what the backup holds.
+- An editor upgrade replaces `product.json`, so the warning returns and **Fix Checksums** has to be run again. There is no automatic detection of that.
+- Patching the core files themselves is out of scope — this only stops the editor complaining about a patch you already made.
+- Still no runtime dependencies, no telemetry, no network access, and nothing happens at activation: the new commands touch the disk only when you run them.
+- **Only verified on macOS.** The Windows and Linux paths — including the not-writable-installation flow — are implemented and covered by tests, but have not been run on a real Windows or Linux machine.
+- Behaviour derived from [vscode-fix-checksums](https://github.com/RimuruChan/vscode-fix-checksums) — MIT © Jürg Lehni 2018, MIT © RimuruChan 2024. Written from scratch in TypeScript; none of its code or its `sudo-prompt` / `tmp` dependencies is bundled. The attribution lives in the README licence section.
+
 ## v0.0.3 2026-08-10 Insertion anchors
 
 Reworks where an inserted log lands, and turns the ports view's search into a permanent row.

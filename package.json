@@ -2,7 +2,7 @@
   "name": "editor-console-toolkit",
   "displayName": "Editor Console Toolkit",
   "description": "%extension.description%",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "HeavenSky",
   "license": "MIT",
   "icon": "media/icon.png",
