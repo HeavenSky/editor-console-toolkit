@@ -30,8 +30,9 @@ export async function readSystemKind(run: RunCommand = runCommand): Promise<Kind
       try {
         return parseMacAppearance((await run('defaults', ['read', '-g', 'AppleInterfaceStyle'])).stdout);
       } catch (error) {
-        // 浅色下该键不存在, `defaults` 只往 stderr 报 "does not exist"; 命令缺失或超时才是未知。
-        return /does not exist/.test(String(error)) ? 'light' : undefined;
+        // 浅色下该键不存在, `defaults` 只往 stderr 报错: 旧版 macOS 为 "... does not exist",
+        // 新版为 "Could not find key ..."; 命令缺失或超时才是未知。
+        return /does not exist|could not find key/i.test(String(error)) ? 'light' : undefined;
       }
     case 'win32': {
       const out = await stdout('reg', [

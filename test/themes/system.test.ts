@@ -38,6 +38,10 @@ describe('readSystemKind', () => {
       'defaults 执行失败: The domain/default pair of (kCFPreferencesAnyApplication, AppleInterfaceStyle) does not exist'
     );
     expect(await readSystemKind(replying(() => missingKey))).toBe('light');
+    const newerMissingKey = new Error(
+      "defaults 执行失败: Error: Could not find key 'AppleInterfaceStyle' in domain 'kCFPreferencesAnyApplication'."
+    );
+    expect(await readSystemKind(replying(() => newerMissingKey))).toBe('light');
   });
 
   it('macOS 命令缺失或超时时为未知', async () => {
