@@ -143,7 +143,7 @@ export interface RotationInput {
 export interface Rotation {
   /** 明暗与时段的组合; 与上次处理过的 key 相同时不再切换, 以保留期间的手动选择。 */
   key: string;
-  /** 本时段应使用的主题; 池里的主题都没安装时为 undefined, 调用方本时段不切换。 */
+  /** 本时段应使用的主题; 当前明暗的池里也没有已安装的主题时为 undefined, 调用方本时段不切换。 */
   target: string | undefined;
 }
 
@@ -152,13 +152,16 @@ export interface Rotation {
  *
  * 目标只由明暗, 时段, 偏移, 池与已安装的主题决定而不依赖窗口自己的状态, 多个窗口同时判定得到
  * 同一个主题, 先写入的窗口生效, 其余窗口写入相同值不会再触发切换, 因此每个时段只换一次。
- * 轮到的主题没安装时顺延到池里下一个已安装的主题。
+ * 轮到的主题没安装时顺延到池里下一个已安装的主题; 要切去的池一个都没装时保持当前明暗, 在当前池里照常轮换。
  */
 export function planRotation({ current, pools, desired, slot, shift = {}, installed }: RotationInput): Rotation | undefined {
   const active = kindOf(current, pools);
   if (!active) return undefined;
+  const pick = (kind: Kind) => firstInstalled(pools[kind], slot + (shift[kind] ?? 0), installed);
   const kind = desired ?? active;
-  return { key: `${kind}:${slot}`, target: firstInstalled(pools[kind], slot + (shift[kind] ?? 0), installed) };
+  const target = pick(kind);
+  if (target === undefined && kind !== active) return { key: `${active}:${slot}`, target: pick(active) };
+  return { key: `${kind}:${slot}`, target };
 }
 
 /** 解析 `HH:MM` 为当天分钟数, 非法值返回 undefined。 */

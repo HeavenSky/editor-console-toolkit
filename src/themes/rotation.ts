@@ -75,6 +75,8 @@ const BOUNDARY_MARGIN_MS = 1_000;
 export const MAX_WAIT_MS = 5 * 60_000;
 // 外观跟随系统时, 系统外观随时可能变, 至少每隔这么久重新查一次.
 export const SYSTEM_POLL_MS = 10 * 60_000;
+// 回到前台时重查系统外观的最短间隔, 来回切换窗口时不反复起子进程.
+export const SYSTEM_FOCUS_THROTTLE_MS = 15_000;
 
 export interface Rotation {
   tick(refreshSystem?: boolean): Promise<void>;
@@ -103,6 +105,7 @@ export function createRotation(host: RotationHost): Rotation {
   let desired: Kind | undefined;
   let systemKind: Kind | undefined;
   let systemSlot: number | undefined;
+  let systemReadAt = Number.NEGATIVE_INFINITY;
 
   const installed = (label: string) => host.installed(label);
   const interval = () => effectiveInterval(host.settings().interval);
@@ -136,6 +139,7 @@ export function createRotation(host: RotationHost): Rotation {
     const { appearance } = host.settings();
     if (appearance === 'system') {
       if (refreshSystem || slot !== systemSlot) {
+        systemReadAt = host.now();
         systemKind = await host.readSystemKind();
         systemSlot = slot;
       }
@@ -226,8 +230,8 @@ export function createRotation(host: RotationHost): Rotation {
         installed,
       });
       if (plan && plan.key !== state.get<string>(LAST_KEY)) {
-        // 要切去的池一个都没装时只记下本时段已处理, 不再重试; 装上主题或改配置会改变签名而重新判定,
-        // 进入下一个时段(例如回到另一深浅)照常判定.
+        // 要切去的池一个都没装时 plan 已退回当前明暗的池; 当前池也没装时只记下本时段已处理, 不再重试,
+        // 装上主题或改配置会改变签名而重新判定.
         await state.update(LAST_KEY, plan.key);
         if (plan.target !== undefined && plan.target !== current) await applyTheme(plan.target);
       }
@@ -275,8 +279,8 @@ export function createRotation(host: RotationHost): Rotation {
   }
 
   function onFocusChanged(focused: boolean): void {
-    // 后台期间系统外观可能已变, 回到前台时重新查.
-    if (focused) void tick(true);
+    // 后台期间系统外观可能已变, 回到前台时重新查; 刚查过就不再查.
+    if (focused) void tick(host.now() - systemReadAt >= SYSTEM_FOCUS_THROTTLE_MS);
     else clearTimer();
   }
 

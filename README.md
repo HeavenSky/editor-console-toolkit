@@ -383,7 +383,7 @@ Moves to the next installed theme of the same kind right away. It ships without 
 ### How it decides
 
 - **Only themes in the lists are managed.** Pick a theme that is in neither list — from any extension or VS Code itself — and rotation pauses without changing a setting; pick one from the lists again and it resumes from there. Removing the current theme from the lists has the same effect.
-- **Missing themes are skipped.** Before writing a theme, the extension checks that it is installed and otherwise takes the next installed theme in the list. When none in the list to switch to is installed, the current theme is left alone for that period, and switching resumes by itself once one is installed, the settings change or the next period starts — so listing only dark themes simply keeps a dark theme during the day.
+- **Missing themes are skipped.** Before writing a theme, the extension checks that it is installed and otherwise takes the next installed theme in the list. When none in the list to switch to is installed, rotation stays on the current dark/light kind and keeps rotating through its own list, and switches over once one is installed — so listing only dark themes simply keeps rotating dark themes during the day.
 - **Startup does not flash.** On load, if the current theme already has the wanted kind it is kept as the theme of the current period and later periods continue from it; only a wrong kind (dark in the morning, say) switches right away.
 - **A theme you pick by hand** from the lists is kept until the next switch time, and rotation continues with the one after it.
 - **One switch per period across windows.** Every window derives the same theme from the clock, and only the focused window keeps a timer; windows in the background sleep and catch up when focused again.
@@ -398,7 +398,7 @@ Moves to the next installed theme of the same kind right away. It ships without 
 - **No runtime dependencies.** The extension ships as a single bundled file.
 - **Console Toolkit is purely command-driven** — no listeners, no timers, no status bar item. It does nothing until you run one of its commands.
 - **Port Toolkit only works while you are watching it.** Its scan timer exists only while its view is visible.
-- **Theme Toolkit keeps one timer, in the focused window only.** It wakes at most every five minutes and reads the system appearance (only with `appearance` set to `system`) at a switch time, every 10 minutes, when the window regains focus or when its settings change; it does nothing in background or Remote windows.
+- **Theme Toolkit keeps one timer, in the focused window only.** It wakes at most every five minutes and reads the system appearance (only with `appearance` set to `system`) at a switch time, every 10 minutes, when the window regains focus (at most once per 15 seconds) or when its settings change; it does nothing in background or Remote windows.
 - **Checksum Toolkit touches the disk only when you run it.** No startup scan, no elevation, and nothing is written outside the editor's own installation folder and your temporary folder.
 
 These are not just promises: the build fails if a timer, listener or persistent-UI API ever appears in the console side of the codebase.

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Kind } from '../../src/themes/core';
-import { createRotation, LAST_KEY, MAX_WAIT_MS, type Rotation, type RotationNotice, type RotationSettings, SYSTEM_POLL_MS } from '../../src/themes/rotation';
+import { createRotation, LAST_KEY, MAX_WAIT_MS, type Rotation, type RotationNotice, type RotationSettings, SYSTEM_FOCUS_THROTTLE_MS, SYSTEM_POLL_MS } from '../../src/themes/rotation';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
@@ -399,6 +399,22 @@ describe('系统外观', () => {
     await window.focus();
     expect(LIGHT).toContain(world.userTheme);
   });
+
+  it('刚查过系统外观时回到前台不再重复查询', async () => {
+    const world = new World(at(10, 20), DARK[0]);
+    world.settings.appearance = 'system';
+    world.settings.interval = 0;
+    const window = world.open();
+    await window.load();
+    expect(world.systemQueries).toBe(1);
+    window.blur();
+    await window.focus();
+    expect(world.systemQueries).toBe(1);
+    window.blur();
+    await world.advance(SYSTEM_FOCUS_THROTTLE_MS);
+    await window.focus();
+    expect(world.systemQueries).toBe(2);
+  });
 });
 
 describe('下一个主题命令', () => {
@@ -428,27 +444,26 @@ describe('未安装的主题', () => {
     expect(world.userTheme).toBe(LIGHT[0]);
   });
 
-  it('要切去的池一个都没装时本时段不切, 装上后立即切换', async () => {
+  it('要切去的池一个都没装时在深色池里照常轮换, 装上后立即切换', async () => {
     const world = new World(at(8, 50), DARK[0]);
     for (const label of LIGHT) world.installed.delete(label);
     await world.open().load();
     await world.advance(11 * MINUTE); // 09:01, 该切浅色
-    expect(world.writes).toEqual([]);
+    expect(world.writes).toHaveLength(1);
+    expect(DARK).toContain(world.userTheme);
     await world.setInstalled(LIGHT[1], true);
     expect(world.userTheme).toBe(LIGHT[1]);
   });
 
-  it('只配置深色主题时白天不动, 跨到深色时段照常轮换', async () => {
+  it('只配置深色主题时白天也在深色池里每个时段轮换一次', async () => {
     const world = new World(at(8, 50), DARK[0]);
     world.settings.lightThemes = [];
     await world.open().load();
-    await world.advance(5 * 60 * MINUTE); // 13:50
-    expect(world.writes).toEqual([]);
-    await world.advance(4 * 60 * MINUTE + 11 * MINUTE); // 18:01
+    await world.advance(11 * MINUTE); // 09:01
     expect(world.writes).toHaveLength(1);
-    expect(DARK).toContain(world.userTheme);
-    await world.advance(60 * MINUTE); // 19:01
-    expect(world.writes).toHaveLength(2);
+    await world.advance(5 * 60 * MINUTE); // 14:01
+    expect(world.writes).toHaveLength(6);
+    for (const label of world.writes) expect(DARK).toContain(label);
   });
 
   it('下一个主题命令在池里都没装时提示', async () => {

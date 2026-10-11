@@ -182,12 +182,16 @@ describe('planRotation', () => {
     expect(planRotation({ ...base, current: 'd0', slot: 1, installed: except('d1', 'd2') })?.target).toBe('d3');
   });
 
-  it('池里的主题都没安装时 target 为 undefined', () => {
+  it('要切去的池一个都没装时保持当前明暗, 在当前池里轮换', () => {
     const missingLight = (label: string) => !label.startsWith('l');
-    expect(planRotation({ ...base, current: 'd0', desired: 'light', installed: missingLight })).toEqual({
-      key: 'light:0',
-      target: undefined,
+    expect(planRotation({ ...base, current: 'd0', desired: 'light', slot: 1, installed: missingLight })).toEqual({
+      key: 'dark:1',
+      target: 'd1',
     });
+  });
+
+  it('当前池也没装时 target 为 undefined', () => {
+    expect(planRotation({ ...base, current: 'd0', installed: () => false })).toEqual({ key: 'dark:0', target: undefined });
   });
 
   it('以当前主题为起点重算后, 本时段保持当前主题, 下一个时段轮到它的下一个', () => {
