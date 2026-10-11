@@ -1,5 +1,5 @@
 {
-  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages, manage the processes listening on your local ports, and fix the editor checksum warning after patching its core files.",
+  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages, manage the processes listening on your local ports, fix the editor checksum warning after patching its core files, and rotate color themes on a schedule.",
   "category": "Console Toolkit",
   "command.insertConsoleLog": "Insert Console Log",
   "command.toggleConsoleLog": "Toggle Console Log",
@@ -21,5 +21,18 @@
   "config.ports.includeUdp": "Also list UDP endpoints, not just TCP listeners.",
   "category.checksums": "Checksum Toolkit",
   "command.checksums.apply": "Fix Checksums",
-  "command.checksums.restore": "Restore Checksums"
+  "command.checksums.restore": "Restore Checksums",
+  "category.themes": "Theme Toolkit",
+  "command.themes.next": "Next Theme",
+  "config.themes.enabled": "Automatically rotate through the color themes listed in `#editorConsoleToolkit.themes.darkThemes#` and `#editorConsoleToolkit.themes.lightThemes#`. Only takes effect while the current color theme is in one of those lists; picking any other theme pauses rotation. Windows whose color theme is set by workspace settings, and Remote windows, are skipped. Has no effect while `#window.autoDetectColorScheme#` is enabled.",
+  "config.themes.interval": "Minutes between rotations to the next theme of the same kind (dark or light), aligned to the local clock (`60` switches on the hour). Values below `30` turn rotation off (only dark/light switches per `#editorConsoleToolkit.themes.appearance#`); values above `20160` (two weeks) count as two weeks.",
+  "config.themes.darkThemes": "Dark themes to rotate through, in order, by the name shown in **Preferences: Color Theme** (the value of `#workbench.colorTheme#`). Any installed theme can be listed; themes that are not installed are skipped, and rotation pauses when none of them is installed.",
+  "config.themes.lightThemes": "Light themes to rotate through, in order, by the name shown in **Preferences: Color Theme** (the value of `#workbench.colorTheme#`). Any installed theme can be listed; themes that are not installed are skipped, and rotation pauses when none of them is installed.",
+  "config.themes.appearance": "Whether to also switch between dark and light.",
+  "config.themes.appearance.schedule": "Switch at the times set by `#editorConsoleToolkit.themes.lightTime#` and `#editorConsoleToolkit.themes.darkTime#`.",
+  "config.themes.appearance.system": "Follow the operating system appearance (macOS, Windows, GNOME-based Linux), checked at each rotation and when settings change. Behaves like `keep` when the appearance cannot be detected.",
+  "config.themes.appearance.keep": "Keep the current kind; rotate only among themes of the same kind.",
+  "config.themes.lightTime": "Time (`HH:MM`, 24-hour) to switch to light themes when appearance is `schedule`.",
+  "config.themes.darkTime": "Time (`HH:MM`, 24-hour) to switch to dark themes when appearance is `schedule`.",
+  "config.themes.timePattern": "Use 24-hour HH:MM, for example 09:00."
 }

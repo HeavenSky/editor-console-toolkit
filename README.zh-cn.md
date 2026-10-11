@@ -1,24 +1,25 @@
 # Editor Console Toolkit
 
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/HeavenSky.editor-console-toolkit?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/HeavenSky.editor-console-toolkit)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
+[![VS Marketplace](https://vsmarketplacebadges.dev/version-short/HeavenSky.editor-console-toolkit.svg?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/HeavenSky.editor-console-toolkit.svg)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.txt)
 
 [English](./README.md) · **简体中文**
 
-三件日常琐事, 一个插件, 零运行时依赖.
+> 市场页只渲染英文版 README, 不随访问者的显示语言切换; 插件界面本身是双语的.
+
+四件日常琐事, 一个插件, 零运行时依赖.
 
 | | 做什么 | 在哪用 |
 | --- | --- | --- |
 | **控制台工具箱** (Console Toolkit) | 为光标处的表达式插入调试日志, 再一键把它 (或整个文件的日志) 关掉. 支持 15 种语言. | 命令面板, `Alt+L` |
 | **端口工具箱** (Port Toolkit) | 查看哪些进程占着本机端口, 按启动位置区分它们, 并一次终止多个. | 活动栏 |
 | **校验和工具箱** (Checksum Toolkit) | 改过编辑器自身的文件之后, 消掉"安装似乎已损坏"的警告; 想撤回时也能还原. | 命令面板 |
+| **主题工具箱** (Theme Toolkit) | 在你指定的主题列表之间轮换颜色主题, 按时间段或系统外观切换深浅. | 设置, 命令面板 |
 
 界面提供英文与简体中文, 跟随 VS Code 的显示语言.
 
 > **本文按中文界面书写.** 命令名与视图名会跟随 VS Code 的显示语言, 下文表格里括号内给出英文界面下的名称, 便于对照. 命令 ID 与配置项 key 不随语言变化.
->
-> 插件市场页面只渲染英文版 README, 不会按访问者的语言自动切换 — 这是市场平台的限制.
 
 ---
 
@@ -29,7 +30,7 @@
 
 ### 环境要求
 
-VS Code `1.101.0` 或更高版本. 其他什么都不用装: 没有捆绑依赖, 运行时不下载任何东西, Port Toolkit 读取端口用的是 macOS, Linux 与 Windows 自带的能力.
+VS Code `1.101.0` 或更高版本. 其他什么都不用装: 没有捆绑依赖, 运行时不下载任何东西, 端口工具箱读取端口用的是 macOS, Linux 与 Windows 自带的能力.
 
 校验和工具箱还需要对编辑器自身安装目录的写权限. 拿不到写权限时 (Windows 与 Linux 上通常如此), 它会给你一条可以自己执行的命令, 而不是向你要密码.
 
@@ -100,7 +101,7 @@ const user = getUser();
 
 ### 快捷键
 
-只有 **插入 Console 日志** 带默认快捷键, 且限定在 `editorTextFocus && !editorReadonly`, 因此不会在只读编辑器外触发. 另两条刻意不给默认键, 避免与你现有的键位冲突.
+只有 **插入 Console 日志** 带默认快捷键, 且限定在 `editorTextFocus && !editorReadonly`, 因此不会在可写编辑器之外触发. 另两条刻意不给默认键, 避免与你现有的键位冲突.
 
 在 `keybindings.json` 里自己绑定 — 重新绑定或取消 `Alt+L` 也是同样的写法:
 
@@ -196,8 +197,9 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 - 选区跨越多行;
 - 语句括号不配对, 字符串未闭合, 或长度超过 50 行;
-- 光标在注释内 (含 `/* */` 这类块注释);
-- 光标在字符串字面量内 (含模板字符串与 Python 三引号这类跨行字符串);
+- 光标在块注释或跨行字符串内 (模板字符串, Python 三引号字符串);
+- 光标在注释内;
+- 光标在字符串字面量内;
 - 光标处没有表达式;
 - 该语言尚未支持.
 
@@ -259,14 +261,14 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 | 切换系统进程的显示 (Toggle System Processes) | `editorConsoleToolkit.ports.toggleSystemProcesses` | ⧩ 标题栏, 命令面板 |
 | 刷新端口列表 (Refresh Ports) | `editorConsoleToolkit.ports.refresh` | ⟳ 标题栏, 命令面板 |
 | 搜索端口 (Search Ports) | `editorConsoleToolkit.ports.search` | 点击搜索行, 命令面板 |
-| 清除端口搜索 (Clear Port Search) | `editorConsoleToolkit.ports.clearSearch` | 搜索行上的 ✕, 命令面板 |
-| 终止进程 (Kill Process) | `editorConsoleToolkit.ports.killOne` | 行内悬停, 右键菜单 |
+| 清除端口搜索 (Clear Port Search) | `editorConsoleToolkit.ports.clearSearch` | 搜索行上的 ✕ |
+| 终止进程 (Kill Process) | `editorConsoleToolkit.ports.killOne` | 行内悬停 |
 
 **批量终止.** 想勾多少行就勾多少行, 然后执行 **终止已勾选的进程**. 会弹出模态确认框, 逐个列出将被终止的进程, 结束后再汇总实际终止了几个. 勾选状态不会被自动刷新清掉, 所以你可以慢慢挑.
 
 **搜索** 匹配进程名, 完整命令行, PID, 工作目录以及任一端口号 — `5173`, `vite` 与 `~/repo/web` 都能命中.
 
-点搜索行即可输入. 列表边输边收敛(停顿一下才生效), **回车** 保留过滤, **Esc** 把过滤退回打开输入框之前的样子. 有过滤时搜索行显示搜索词与匹配计数, 旁边的 ✕ 用来清空; 没有过滤时本来就没什么可清, 所以 ✕ 直接不出现.
+点搜索行即可输入. 列表边输边收敛 (停顿一下才生效), **回车** 保留过滤, **Esc** 把过滤退回打开输入框之前的样子. 有过滤时搜索行显示搜索词与匹配计数, 旁边的 ✕ 用来清空; 没有过滤时本来就没什么可清, 所以 ✕ 直接不出现.
 
 有一点需要知道: **过滤不会清掉你的勾选**. 过滤之前勾上的进程, 即使这一行被过滤藏起来了也仍然是勾着的, **终止已勾选的进程** 会把它一起终止. 确认框始终逐个列出即将被终止的进程, 所以用过过滤之后请看一眼确认框.
 
@@ -358,13 +360,50 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 
 ---
 
+## 主题工具箱 (Theme Toolkit)
+
+在你指定的主题列表之间轮换颜色主题 — 例如每到整点换一个 — 并按时间段或操作系统外观在深色列表与浅色列表之间切换. 列表里可以填 **任何已安装的主题**; 默认是 [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme) 的 8 个主题, 当前主题不在列表里时什么都不做.
+
+### 命令
+
+| 命令 | ID |
+| --- | --- |
+| 下一个主题 (Next Theme) | `editorConsoleToolkit.themes.next` |
+
+立即换到同类的下一个已安装主题. 没有默认快捷键.
+
+### 配置
+
+| 配置项 | 类型 | 默认值 | 作用 |
+| --- | --- | --- | --- |
+| `editorConsoleToolkit.themes.enabled` | `boolean` | `true` | 开启或关闭轮换. |
+| `editorConsoleToolkit.themes.interval` | `number` | `60` | 轮换间隔(分钟), 按本地时钟对齐. 小于 `30` 表示不轮换, 只切换深浅; 大于 `20160`(两周)按两周计. |
+| `editorConsoleToolkit.themes.darkThemes` | `string[]` | Comfort 的 4 个深色主题 | 参与轮换的深色主题, 按顺序轮换, 填 **首选项: 颜色主题** 里显示的名字. |
+| `editorConsoleToolkit.themes.lightThemes` | `string[]` | Comfort 的 4 个浅色主题 | 参与轮换的浅色主题, 按顺序轮换. |
+| `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` 按 `lightTime` / `darkTime` 切换深浅; `system` 跟随系统外观(macOS, Windows, GNOME 系 Linux); `keep` 保持当前深浅. |
+| `editorConsoleToolkit.themes.lightTime` | `string` | `09:00` | `schedule` 时切到浅色列表的时刻. |
+| `editorConsoleToolkit.themes.darkTime` | `string` | `18:00` | `schedule` 时切到深色列表的时刻. |
+
+### 它是怎么决定的
+
+- **只管列表里的主题.** 换成两个列表都没有的主题(任何插件或 VS Code 自带的) 会暂停轮换, 设置不变; 再换回列表里的主题就从它接着轮. 把当前主题从列表里删掉效果相同.
+- **跳过没安装的主题.** 写入主题前先检查是否已安装, 没装就取列表里下一个已安装的; 列表里一个都没装时暂停, 装上主题或修改设置后自动恢复.
+- **启动不闪.** 加载时当前主题的深浅符合要求就保留, 视为本时段的主题并从它接着轮; 只有深浅不符(例如早上仍是深色)才立即切换.
+- **手动选的列表主题** 保留到下一个切换时间点, 之后从它的下一个接着轮.
+- **多窗口每个时段只换一次.** 各窗口按时钟算出同一个主题, 只有获得焦点的窗口计时; 后台窗口休眠, 重新获得焦点时补判.
+- **工作区设置优先.** `workbench.colorTheme` 由工作区设置(`.vscode/settings.json` 或 `.code-workspace` 文件) 决定的窗口不动. `window.autoDetectColorScheme` 会覆盖 `workbench.colorTheme`, 使用本功能需将其关闭.
+- **远程窗口不参与**, 因为那里的时钟, 时区与系统外观属于远程机器; 由本机窗口负责切换.
+
+---
+
 ## 隐私与开销
 
 - **无遥测, 无网络访问.** 关于你和你代码的任何信息都不会离开本机.
 - **无运行时依赖.** 插件以单个打包文件发布.
-- **Console Toolkit 是纯命令式的** — 没有监听器, 没有计时器, 没有状态栏项. 在你执行命令之前它什么都不做.
-- **Port Toolkit 只在你看着它的时候工作.** 扫描计时器仅在其视图可见期间存在.
-- **Checksum Toolkit 只在你执行它的时候碰磁盘.** 没有启动扫描, 不提权, 除了编辑器自身的安装目录与你的临时目录之外不写任何地方.
+- **控制台工具箱是纯命令式的** — 没有监听器, 没有计时器, 没有状态栏项. 在你执行命令之前它什么都不做.
+- **端口工具箱只在你看着它的时候工作.** 扫描计时器仅在其视图可见期间存在.
+- **主题工具箱只在获得焦点的窗口里挂一个定时器.** 最多每 5 分钟醒一次, 只在切换时间点或修改设置时读取系统外观; 后台窗口, 远程窗口与主题由工作区设置决定的窗口什么都不做.
+- **校验和工具箱只在你执行它的时候碰磁盘.** 没有启动扫描, 不提权, 除了编辑器自身的安装目录与你的临时目录之外不写任何地方.
 
 这些不只是口头承诺: 一旦 console 那一侧的代码里出现计时器, 监听器或常驻 UI 的 API, 构建就会失败.
 
@@ -389,7 +428,7 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 - **接下来** — shell / zsh, PowerShell, Perl, Go, C, C++, Scala, Groovy, Clojure, R; Vue, Svelte 与 Astro 的 `<script>` 块; notebook 单元格.
 - **再往后** — SQL. 各方言没有统一的日志构造, 因此需要一个显式的方言配置, 而不是有风险的猜测.
 
-Port Toolkit 与 Checksum Toolkit 的下一步都是在真机上验证 Linux 与 Windows — 端口解析器与"安装目录不可写"这条路径都已实现且有测试覆盖, 但只在 macOS 上真跑过.
+端口工具箱与校验和工具箱的下一步都是在真机上验证 Linux 与 Windows — 端口解析器与"安装目录不可写"这条路径都已实现且有测试覆盖, 但只在 macOS 上真跑过.
 
 ## 版本记录
 

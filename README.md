@@ -1,18 +1,19 @@
 # Editor Console Toolkit
 
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/HeavenSky.editor-console-toolkit?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/HeavenSky.editor-console-toolkit)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
+[![VS Marketplace](https://vsmarketplacebadges.dev/version-short/HeavenSky.editor-console-toolkit.svg?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/HeavenSky.editor-console-toolkit.svg)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.txt)
 
 **English** · [简体中文](./README.zh-cn.md)
 
-Three everyday chores, one extension, zero runtime dependencies.
+Four everyday chores, one extension, zero runtime dependencies.
 
 | | What it does | Where you use it |
 | --- | --- | --- |
 | **Console Toolkit** | Insert a debug log for whatever is under your cursor, then toggle it — or every log in the file — back off. 15 languages. | Command Palette, `Alt+L` |
 | **Port Toolkit** | See which processes hold your local ports, tell them apart by where they were started, and terminate several at once. | Activity Bar |
 | **Checksum Toolkit** | Silence the "installation appears to be corrupt" warning after you patch the editor's own files, and put it back when you want. | Command Palette |
+| **Theme Toolkit** | Rotate your color theme through lists you choose, switching dark and light by time of day or your system appearance. | Settings, Command Palette |
 
 UI in English and 简体中文, following your VS Code display language.
 
@@ -256,8 +257,8 @@ Type `Port Toolkit` in the Command Palette. The view's title bar carries the sam
 | Toggle System Processes | `editorConsoleToolkit.ports.toggleSystemProcesses` | ⧩ title bar, palette |
 | Refresh Ports | `editorConsoleToolkit.ports.refresh` | ⟳ title bar, palette |
 | Search Ports | `editorConsoleToolkit.ports.search` | click the search row, palette |
-| Clear Port Search | `editorConsoleToolkit.ports.clearSearch` | ✕ on the search row, palette |
-| Kill Process | `editorConsoleToolkit.ports.killOne` | row hover, right-click |
+| Clear Port Search | `editorConsoleToolkit.ports.clearSearch` | ✕ on the search row |
+| Kill Process | `editorConsoleToolkit.ports.killOne` | row hover |
 
 **Terminating in batches.** Tick as many rows as you like, then run **Kill Checked Processes**. You get a modal confirmation listing exactly what will be terminated, and afterwards a summary of how many actually went down. Ticked rows survive the automatic refresh, so you can take your time.
 
@@ -355,12 +356,49 @@ The commands refuse to run, with the reason shown, in a Remote (SSH, WSL, contai
 
 ---
 
+## Theme Toolkit
+
+Rotates your color theme through lists you choose — for example every hour on the hour — and switches between a dark list and a light list by time of day or by your operating system's appearance. The lists can name **any installed theme**; out of the box they hold the eight themes of [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme), and nothing happens until the current theme is one of them.
+
+### Commands
+
+| Command | ID |
+| --- | --- |
+| Next Theme | `editorConsoleToolkit.themes.next` |
+
+Moves to the next installed theme of the same kind right away. It ships without a default keybinding.
+
+### Settings
+
+| Setting | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `editorConsoleToolkit.themes.enabled` | `boolean` | `true` | Turn rotation on or off. |
+| `editorConsoleToolkit.themes.interval` | `number` | `60` | Minutes between rotations, aligned to the local clock. Below `30` means no rotation (only dark/light switching); above `20160` (two weeks) counts as two weeks. |
+| `editorConsoleToolkit.themes.darkThemes` | `string[]` | the four Comfort dark themes | Dark themes to rotate through, in order, by the name shown in **Preferences: Color Theme**. |
+| `editorConsoleToolkit.themes.lightThemes` | `string[]` | the four Comfort light themes | Light themes to rotate through, in order. |
+| `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` switches dark/light at `lightTime` / `darkTime`; `system` follows the OS appearance (macOS, Windows, GNOME-based Linux); `keep` stays dark or light. |
+| `editorConsoleToolkit.themes.lightTime` | `string` | `09:00` | `schedule`: switch to the light list at this time. |
+| `editorConsoleToolkit.themes.darkTime` | `string` | `18:00` | `schedule`: switch to the dark list at this time. |
+
+### How it decides
+
+- **Only themes in the lists are managed.** Pick a theme that is in neither list — from any extension or VS Code itself — and rotation pauses without changing a setting; pick one from the lists again and it resumes from there. Removing the current theme from the lists has the same effect.
+- **Missing themes are skipped.** Before writing a theme, the extension checks that it is installed and otherwise takes the next installed theme in the list. When none in the list is installed, rotation pauses and resumes by itself once one is installed or the settings change.
+- **Startup does not flash.** On load, if the current theme already has the wanted kind it is kept as the theme of the current period and later periods continue from it; only a wrong kind (dark in the morning, say) switches right away.
+- **A theme you pick by hand** from the lists is kept until the next switch time, and rotation continues with the one after it.
+- **One switch per period across windows.** Every window derives the same theme from the clock, and only the focused window keeps a timer; windows in the background sleep and catch up when focused again.
+- **Workspace settings win.** A window whose `workbench.colorTheme` is set by workspace settings (`.vscode/settings.json`, or the `.code-workspace` file) is left alone. `window.autoDetectColorScheme` overrides `workbench.colorTheme`; turn it off to use this feature.
+- **Remote windows are skipped**, because there the clock, time zone and system appearance belong to the remote machine; a local window does the switching.
+
+---
+
 ## Privacy and performance
 
 - **No telemetry, no network access.** Nothing about you or your code leaves your machine.
 - **No runtime dependencies.** The extension ships as a single bundled file.
 - **Console Toolkit is purely command-driven** — no listeners, no timers, no status bar item. It does nothing until you run one of its commands.
 - **Port Toolkit only works while you are watching it.** Its scan timer exists only while its view is visible.
+- **Theme Toolkit keeps one timer, in the focused window only.** It wakes at most every five minutes, reads the system appearance only at a switch time or when its settings change, and does nothing in background, Remote or workspace-themed windows.
 - **Checksum Toolkit touches the disk only when you run it.** No startup scan, no elevation, and nothing is written outside the editor's own installation folder and your temporary folder.
 
 These are not just promises: the build fails if a timer, listener or persistent-UI API ever appears in the console side of the codebase.

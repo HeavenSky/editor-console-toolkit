@@ -8,8 +8,10 @@
  *   因此在该目录放行;
  * - checksums 命令域 (`src/checksums/`): 仍然是纯命令式, 但要读写编辑器安装目录里的
  *   `product.json` 与核心文件, 因此只为它放行磁盘读取。
+ * - themes 轮换域 (`src/themes/`): 启动时激活, 在前台窗口挂定时器并监听配置与焦点,
+ *   因此与 ports 一样放行; 清单里也只为它放行 `onStartupFinished` 这一个激活事件。
  *
- * 三者的网络与遥测都全局禁止。分级而不是整体放开, 是为了防止日后无意给 console 命令加上
+ * 所有域的网络与遥测都全局禁止。分级而不是整体放开, 是为了防止日后无意给 console 命令加上
  * 监听器或计时器, 也为了让"哪个域可以碰磁盘"这件事留在门禁里而不是留在记忆里。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -36,7 +38,10 @@ const CONSOLE_ONLY_FORBIDDEN = [
 ];
 
 /** 放行 `CONSOLE_ONLY_FORBIDDEN` 的目录, 相对 `src/`。 */
-const RELAXED_DIRS = ['ports', 'checksums'];
+const RELAXED_DIRS = ['ports', 'checksums', 'themes'];
+
+/** 唯一允许的激活事件: themes 轮换域要在启动后就开始计时; 其余域靠命令与视图贡献点隐含激活。 */
+const ALLOWED_ACTIVATION_EVENTS = ['onStartupFinished'];
 
 /**
  * 默认快捷键契约: 只给最高频的 insert 一个默认键, 另两条命令刻意留空由用户自己绑,
@@ -68,6 +73,14 @@ function isRelaxed(srcDir, file) {
   return RELAXED_DIRS.includes(segments[0]);
 }
 
+/** `activationEvents` 只能缺省, 或正好是 `ALLOWED_ACTIVATION_EVENTS`。 */
+export function activationProblems(pkg) {
+  const events = pkg.activationEvents;
+  if (events === undefined) return [];
+  const extra = Array.isArray(events) ? events.filter((event) => !ALLOWED_ACTIVATION_EVENTS.includes(event)) : [events];
+  return extra.map((event) => `activationEvents 不应出现 ${event} (命令与视图贡献点已隐含激活, 只放行 onStartupFinished)`);
+}
+
 export function checks(root) {
   return {
     'src 未使用被禁止的 API': () => {
@@ -92,7 +105,7 @@ export function checks(root) {
     '清单未出现被禁止项': () => {
       const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
       const problems = [];
-      if (pkg.activationEvents) problems.push('activationEvents 不应存在 (命令与视图贡献点已隐含激活)');
+      problems.push(...activationProblems(pkg));
       if (pkg.extensionDependencies) problems.push('extensionDependencies 不应存在');
       if (Object.keys(pkg.dependencies ?? {}).length > 0) problems.push('dependencies 必须为空');
       if ((pkg.contributes?.commands ?? []).some((command) => command.enablement)) {

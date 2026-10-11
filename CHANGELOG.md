@@ -1,5 +1,16 @@
 # Change Log
 
+## Unreleased
+
+Adds a fourth feature area: **Theme Toolkit**, for rotating color themes on a schedule.
+
+### Added
+
+- **Theme rotation** (`editorConsoleToolkit.themes.*`, on by default): rotates through the themes listed in `darkThemes` / `lightThemes` every `interval` minutes on the local clock (60 by default; below 30 means no rotation, above two weeks counts as two weeks), switching dark and light at `lightTime` / `darkTime` or by the OS appearance. The lists accept any installed theme and default to the eight Editor Comfort Theme themes.
+- Themes that are not installed are skipped; when none in a list is installed, rotation pauses until one is installed or the settings change.
+- Picking a theme outside the lists pauses rotation without changing settings; picking one from the lists resumes it from that theme. Startup only switches when the dark/light kind is wrong, and windows whose theme is set by workspace settings, background windows and Remote windows never switch.
+- **Next Theme** (`editorConsoleToolkit.themes.next`) to rotate right away.
+
 ## v0.0.4 2026-08-12 Checksum Toolkit
 
 Adds a third feature area: **Checksum Toolkit**, for silencing the editor's "installation appears to be corrupt" warning after you have patched its core files.

@@ -46,5 +46,8 @@
   "No write access to the editor installation. The new product.json has been staged at {0}. Run this in a terminal with administrator rights, then fully quit and reopen the editor: {1}": "没有编辑器安装目录的写入权限. 新的 product.json 已暂存到 {0}. 请在具备管理员权限的终端里执行下面的命令, 然后完全退出并重新打开编辑器: {1}",
   "No write access to the editor installation. Run this in a terminal with administrator rights, then fully quit and reopen the editor: {0}": "没有编辑器安装目录的写入权限. 请在具备管理员权限的终端里执行下面的命令, 然后完全退出并重新打开编辑器: {0}",
   "Writing product.json failed: {0}": "写入 product.json 失败: {0}",
-  "Copy command": "复制命令"
+  "Copy command": "复制命令",
+  "This window's color theme is set by workspace settings (workbench.colorTheme), so Theme Toolkit does not switch themes here.": "此窗口的颜色主题由工作区设置 (workbench.colorTheme) 决定, 主题工具箱不在此窗口切换主题.",
+  "window.autoDetectColorScheme is enabled, so VS Code ignores workbench.colorTheme and Theme Toolkit cannot switch themes.": "已开启 window.autoDetectColorScheme, VS Code 不使用 workbench.colorTheme, 主题工具箱无法切换主题.",
+  "None of the themes configured for Theme Toolkit is installed.": "主题工具箱配置的主题都没有安装."
 }
