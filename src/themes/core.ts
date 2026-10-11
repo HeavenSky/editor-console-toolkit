@@ -20,25 +20,6 @@ export function themeIdsFromManifest(themes: unknown): string[] {
     .filter((id): id is string => typeof id === 'string' && id !== '');
 }
 
-/**
- * 清单里是否有名字无法确定的主题: 没有 `id` 而 `label` 是 `%占位符%`。这种主题实际写进
- * `workbench.colorTheme` 的是本地化后的 label, 扩展 API 拿不到, 收集到的名字对不上。
- */
-export function hasUnresolvedTheme(themes: unknown): boolean {
-  if (!Array.isArray(themes)) return false;
-  return themes.some(
-    (theme) => theme?.id === undefined && typeof theme?.label === 'string' && /^%.+%$/.test(theme.label)
-  );
-}
-
-/**
- * 已安装检查: 名字在收集到的主题里即已安装; 存在名字无法确定的主题时, 对不上的名字也按已安装处理
- * (fail-open), 宁可写入一个没装的主题让 VS Code 回退默认主题, 也不把装了的主题误判为没装而永远跳过。
- */
-export function installedChecker(ids: ReadonlySet<string>, unresolved: boolean): (label: string) => boolean {
-  return (label) => unresolved || ids.has(label);
-}
-
 /** 配置里的一份主题列表: 只保留非空字符串并按首次出现去重, 顺序即轮换顺序。 */
 export function poolFrom(configured: unknown): string[] {
   if (!Array.isArray(configured)) return [];

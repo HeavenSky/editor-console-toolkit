@@ -8,9 +8,7 @@ import {
   anchorShift,
   effectiveInterval,
   firstInstalled,
-  hasUnresolvedTheme,
   inRotation,
-  installedChecker,
   kindOf,
   mustSwitchOnLoad,
   nextBoundary,
@@ -71,22 +69,6 @@ describe('themeIdsFromManifest', () => {
     ];
     expect(themeIdsFromManifest(themes)).toEqual(['Default Dark Modern', 'Comfort One Dark']);
     expect(themeIdsFromManifest(undefined)).toEqual([]);
-  });
-});
-
-describe('名字无法确定的主题 (fail-open)', () => {
-  it('没有 id 而 label 为 %占位符% 时视为无法确定', () => {
-    expect(hasUnresolvedTheme([{ label: '%theme.dark%' }])).toBe(true);
-    expect(hasUnresolvedTheme([{ id: 'X', label: '%theme.dark%' }])).toBe(false);
-    expect(hasUnresolvedTheme([{ label: 'Comfort One Dark' }, { label: '%%' }])).toBe(false);
-    expect(hasUnresolvedTheme(undefined)).toBe(false);
-  });
-
-  it('存在无法确定的主题时对不上的名字也按已安装处理', () => {
-    const ids = new Set(['A']);
-    expect(installedChecker(ids, false)('A')).toBe(true);
-    expect(installedChecker(ids, false)('B')).toBe(false);
-    expect(installedChecker(ids, true)('B')).toBe(true);
   });
 });
 

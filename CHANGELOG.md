@@ -7,7 +7,7 @@ Adds a fourth feature area: **Theme Toolkit**, for rotating color themes on a sc
 ### Added
 
 - **Theme rotation** (`editorConsoleToolkit.themes.*`, on by default): rotates through the themes listed in `darkThemes` / `lightThemes` every `interval` minutes on the local clock (60 by default; below 30 means no rotation, above two weeks counts as two weeks), switching dark and light at `lightTime` / `darkTime` or by the OS appearance (macOS, Windows, and Linux via the XDG desktop portal, GNOME or KDE settings; rechecked every 10 minutes and on window focus). The lists accept any installed theme and default to the eight Editor Comfort Theme themes.
-- Themes that are not installed are skipped; when none in the list to switch to is installed, that period is left alone until one is installed, the settings change or the next period starts. Themes whose name cannot be determined (a `%placeholder%` label without an `id`) make unmatched names count as installed.
+- Themes that are not installed are skipped; when none in the list to switch to is installed, that period is left alone until one is installed, the settings change or the next period starts.
 - Picking a theme outside the lists pauses rotation without changing settings; picking one from the lists resumes it from that theme. Startup only switches when the dark/light kind is wrong. Only the user-level theme is written: a window whose theme is set by workspace settings keeps it but still drives rotation; background windows and Remote windows never switch.
 - **Next Theme** (`editorConsoleToolkit.themes.next`) to rotate right away.
 

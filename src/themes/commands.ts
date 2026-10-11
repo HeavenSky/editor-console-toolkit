@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { hasUnresolvedTheme, installedChecker, type Kind, themeIdsFromManifest, themeSetByWorkspace } from './core';
+import { type Kind, themeIdsFromManifest, themeSetByWorkspace } from './core';
 import { createRotation, type RotationNotice, type RotationSettings } from './rotation';
 import { readSystemKind } from './system';
 
@@ -14,10 +14,12 @@ import { readSystemKind } from './system';
 
 const SECTION = 'editorConsoleToolkit.themes';
 
-/** 所有已安装扩展(含内置)贡献的颜色主题, 按写进 `workbench.colorTheme` 的名字收集成已安装检查。 */
-function installedThemes(): (label: string) => boolean {
-  const manifests = vscode.extensions.all.map((extension) => extension.packageJSON?.contributes?.themes as unknown);
-  return installedChecker(new Set(manifests.flatMap(themeIdsFromManifest)), manifests.some(hasUnresolvedTheme));
+/**
+ * 所有已安装扩展(含内置)贡献的颜色主题, 按写进 `workbench.colorTheme` 的名字收集。
+ * `packageJSON` 里的 `%占位符%` label 已由 VS Code 按显示语言翻译, 与设置里认的名字一致。
+ */
+function installedThemes(): Set<string> {
+  return new Set(vscode.extensions.all.flatMap((extension) => themeIdsFromManifest(extension.packageJSON?.contributes?.themes)));
 }
 
 export function registerThemeRotation(context: vscode.ExtensionContext): void {
@@ -40,7 +42,7 @@ export function registerThemeRotation(context: vscode.ExtensionContext): void {
 
   const rotation = createRotation({
     now: () => Date.now(),
-    installed: (label) => installed(label),
+    installed: (label) => installed.has(label),
     settings: () => {
       // 不传默认值: 取清单里声明的默认值, 两处各写一份会漂移。
       const config = vscode.workspace.getConfiguration(SECTION);
