@@ -3,8 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { activationProblems, checks } from '../scripts/check-extra.mjs';
-import { deriveAllowlist } from '../scripts/lib/vsix-allowlist.mjs';
+import checks, { activationProblems } from '../scripts/check-extra.mjs';
+import deriveAllowlist from '../scripts/lib/vsix-allowlist.mjs';
 
 /**
  * 门禁自身的测试。

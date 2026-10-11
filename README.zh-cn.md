@@ -430,6 +430,18 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 
 端口工具箱与校验和工具箱的下一步都是在真机上验证 Linux 与 Windows — 端口解析器与"安装目录不可写"这条路径都已实现且有测试覆盖, 但只在 macOS 上真跑过.
 
+## 开发
+
+```bash
+npm ci
+npm run check       # 图标, 清单, l10n 与骨架漂移门禁
+npm run typecheck
+npm test
+npm run package     # 生成 artifacts/<名称>-<版本>.vsix 并断言包内容
+```
+
+使用 npm 12 时, `npm ci` 只接受从 `registry.npmjs.org` 解析的 lockfile, 且依赖的安装脚本(`esbuild`, `@vscode/vsce-sign`, `fsevents`)默认不执行. 检查, 测试与打包都不需要它们; 只有本地签名或发布报错时, 才用 `npm install-scripts approve <包>` 放行. CI 使用 `.nvmrc` 指定的 Node 版本自带的 npm, 不受影响.
+
 ## 版本记录
 
 见 [CHANGELOG.md](./CHANGELOG.md).

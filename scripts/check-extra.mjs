@@ -81,7 +81,7 @@ export function activationProblems(pkg) {
   return extra.map((event) => `activationEvents 不应出现 ${event} (命令与视图贡献点已隐含激活, 只放行 onStartupFinished)`);
 }
 
-export function checks(root) {
+export default function checks(root) {
   return {
     'src 未使用被禁止的 API': () => {
       const problems = [];

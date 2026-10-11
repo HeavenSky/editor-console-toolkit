@@ -426,6 +426,18 @@ Console Toolkit language support ships in tiers, because each language needs its
 
 For Port Toolkit and Checksum Toolkit, the next step is verifying Linux and Windows on real machines — the port parsers and the not-writable-installation path are both implemented and tested, but only exercised for real on macOS.
 
+## Development
+
+```bash
+npm ci
+npm run check       # icon, manifest, l10n and template drift gates
+npm run typecheck
+npm test
+npm run package     # build artifacts/<name>-<version>.vsix and assert its contents
+```
+
+With npm 12, `npm ci` only accepts a lockfile resolved from `registry.npmjs.org`, and dependency install scripts (`esbuild`, `@vscode/vsce-sign`, `fsevents`) are skipped by default. None of them is needed to check, test or package; approve one with `npm install-scripts approve <package>` only if signing or publishing locally fails. CI uses the npm bundled with the Node version in `.nvmrc` and is not affected.
+
 ## Release notes
 
 See [CHANGELOG.md](./CHANGELOG.md).

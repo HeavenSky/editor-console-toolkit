@@ -34,7 +34,7 @@ const line = (x1, y, x2, stroke) => ({
 
 const lamp = (cx, fill) => ({ kind: 'circle', cx, cy: 162, r: 9, fill });
 
-export const spec = {
+export default {
   size: SIZE,
   label: 'Editor Console Toolkit',
   shapes: [
