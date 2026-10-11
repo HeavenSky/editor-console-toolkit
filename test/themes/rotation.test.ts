@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Kind } from '../../src/themes/core';
-import { createRotation, MAX_WAIT_MS, PAUSED_KEY, type Rotation, type RotationNotice, type RotationSettings } from '../../src/themes/rotation';
+import { createRotation, LAST_KEY, MAX_WAIT_MS, type Rotation, type RotationNotice, type RotationSettings, SYSTEM_POLL_MS } from '../../src/themes/rotation';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
@@ -122,7 +122,7 @@ class Window {
       now: () => world.now,
       installed: (label) => world.installed.has(label),
       settings: () => ({ ...world.settings }),
-      currentTheme: () => this.workspaceTheme ?? world.userTheme,
+      currentTheme: () => world.userTheme,
       themeSetByWorkspace: () => this.workspaceTheme !== undefined,
       autoDetectColorScheme: () => world.autoDetect,
       focused: () => this.focused,
@@ -245,7 +245,6 @@ describe('暂停', () => {
     await world.advance(2 * 60 * MINUTE);
     expect(world.writes).toEqual([]);
     await world.pickTheme(LIGHT[1]);
-    expect(world.store.get(PAUSED_KEY)).toBe(false);
     await world.advance(60 * MINUTE); // 13:20, 跨过 13:00
     expect(world.userTheme).toBe(LIGHT[2]);
   });
@@ -255,9 +254,24 @@ describe('暂停', () => {
     world.settings.lightThemes = [LIGHT[0], LIGHT[1]];
     await world.open().load();
     await world.pickTheme(LIGHT[2]);
-    expect(world.store.get(PAUSED_KEY)).toBe(true);
+    await world.advance(60 * MINUTE); // 11:20, 池外主题不动
+    expect(world.writes).toEqual([]);
     await world.changeSettings({ lightThemes: [LIGHT[0], LIGHT[1], LIGHT[2]] });
-    expect(world.store.get(PAUSED_KEY)).toBe(false);
+    await world.advance(60 * MINUTE); // 12:20, 跨过 12:00
+    expect(world.writes).toHaveLength(1);
+  });
+
+  it('关闭期间用户设置被同步改回池内主题, 重开后恢复轮换', async () => {
+    const world = new World(at(10, 20), LIGHT[0]);
+    const first = world.open();
+    await first.load();
+    await world.pickTheme('Default Light Modern');
+    first.blur();
+    world.windows = [];
+    world.userTheme = LIGHT[1]; // 设置同步写回, 本扩展没收到事件
+    await world.open().load();
+    await world.advance(41 * MINUTE); // 11:01
+    expect(world.userTheme).toBe(LIGHT[2]);
   });
 
   it('改配置后当前主题仍在池外时保持暂停', async () => {
@@ -265,24 +279,47 @@ describe('暂停', () => {
     await world.open().load();
     await world.pickTheme('Default Light Modern');
     await world.changeSettings({ interval: 120 });
-    expect(world.store.get(PAUSED_KEY)).toBe(true);
+    await world.advance(3 * 60 * MINUTE);
     expect(world.writes).toEqual([]);
   });
 });
 
 describe('工作区设置覆盖', () => {
-  it('主题由工作区设置决定的窗口不切换, 也不把工作区主题当作手动选择', async () => {
+  it('主题由工作区设置决定的窗口照常驱动用户级主题轮换, 下一个主题命令提示', async () => {
     const world = new World(at(10, 20), LIGHT[0]);
     const window = world.open(true, 'Default Dark Modern');
     await window.load();
-    await world.advance(3 * 60 * MINUTE);
-    expect(world.writes).toEqual([]);
-    expect(world.store.get(PAUSED_KEY)).toBeUndefined();
+    await world.advance(41 * MINUTE); // 11:01
+    expect(world.writes).toEqual([LIGHT[1]]);
+    await world.advance(2 * 60 * MINUTE);
+    expect(world.writes).toEqual([LIGHT[1], LIGHT[2], LIGHT[3]]);
     await window.rotation.nextTheme();
     expect(window.notices).toEqual(['workspace']);
   });
 
-  it('移除工作区设置后恢复', async () => {
+  it('工作区主题的变化不算手动选择', async () => {
+    const world = new World(at(10, 20), LIGHT[0]);
+    const window = world.open(true, 'Default Dark Modern');
+    await window.load();
+    const last = world.store.get(LAST_KEY);
+    window.workspaceTheme = LIGHT[2];
+    window.rotation.onThemeChanged();
+    await flush();
+    expect(world.store.get(LAST_KEY)).toBe(last);
+    await world.advance(41 * MINUTE); // 11:01, 按原起点轮到 LIGHT[1] 而不是 LIGHT[3]
+    expect(world.userTheme).toBe(LIGHT[1]);
+  });
+
+  it('被覆盖的窗口里改用户级主题仍算手动选择', async () => {
+    const world = new World(at(10, 20), LIGHT[0]);
+    const window = world.open(true, 'Default Dark Modern');
+    await window.load();
+    await world.pickTheme(LIGHT[2]);
+    await world.advance(41 * MINUTE); // 11:01
+    expect(world.userTheme).toBe(LIGHT[3]);
+  });
+
+  it('移除工作区设置后照常轮换', async () => {
     const world = new World(at(10, 20), LIGHT[0]);
     const window = world.open(true, LIGHT[3]);
     await window.load();
@@ -290,7 +327,7 @@ describe('工作区设置覆盖', () => {
     window.rotation.onThemeChanged();
     await flush();
     await world.advance(60 * MINUTE);
-    expect(world.writes).toHaveLength(1);
+    expect(world.writes).toEqual([LIGHT[1]]);
   });
 });
 
@@ -321,18 +358,46 @@ describe('多窗口', () => {
 });
 
 describe('系统外观', () => {
-  it('只在进入新时段与改配置时查询, 识别不到时按 keep', async () => {
+  it('进入新时段, 轮询节点与改配置时查询, 识别不到时按 keep', async () => {
     const world = new World(at(10, 20), DARK[0]);
     world.settings.appearance = 'system';
     world.systemKind = undefined;
     await world.open().load();
     expect(world.systemQueries).toBe(1);
     expect(world.writes).toEqual([]);
-    await world.advance(30 * MINUTE);
-    expect(world.systemQueries).toBe(1);
-    await world.advance(30 * MINUTE);
+    await world.advance(SYSTEM_POLL_MS);
     expect(world.systemQueries).toBe(2);
+    await world.advance(30 * MINUTE); // 11:00 节点
+    expect(world.systemQueries).toBeGreaterThanOrEqual(4);
     expect(DARK).toContain(world.userTheme);
+  });
+
+  it('interval 小于 30 时, 系统切换后在轮询节点跟随', async () => {
+    const world = new World(at(10, 20), DARK[0]);
+    world.settings.appearance = 'system';
+    world.settings.interval = 0;
+    await world.open().load();
+    expect(world.timers).toHaveLength(1);
+    world.systemKind = 'light';
+    await world.advance(SYSTEM_POLL_MS + MINUTE);
+    expect(LIGHT).toContain(world.userTheme);
+    world.systemKind = 'dark';
+    await world.advance(SYSTEM_POLL_MS + MINUTE);
+    expect(DARK).toContain(world.userTheme);
+  });
+
+  it('后台期间系统切换, 回到前台立即跟随', async () => {
+    const world = new World(at(10, 20), DARK[0]);
+    world.settings.appearance = 'system';
+    world.settings.interval = 0;
+    const window = world.open();
+    await window.load();
+    window.blur();
+    world.systemKind = 'light';
+    await world.advance(MINUTE);
+    expect(world.writes).toEqual([]);
+    await window.focus();
+    expect(LIGHT).toContain(world.userTheme);
   });
 });
 
@@ -363,16 +428,27 @@ describe('未安装的主题', () => {
     expect(world.userTheme).toBe(LIGHT[0]);
   });
 
-  it('要切去的池一个都没装时暂停, 装上后自动恢复', async () => {
+  it('要切去的池一个都没装时本时段不切, 装上后立即切换', async () => {
     const world = new World(at(8, 50), DARK[0]);
     for (const label of LIGHT) world.installed.delete(label);
     await world.open().load();
     await world.advance(11 * MINUTE); // 09:01, 该切浅色
     expect(world.writes).toEqual([]);
-    expect(world.store.get(PAUSED_KEY)).toBe(true);
     await world.setInstalled(LIGHT[1], true);
-    expect(world.store.get(PAUSED_KEY)).toBe(false);
     expect(world.userTheme).toBe(LIGHT[1]);
+  });
+
+  it('只配置深色主题时白天不动, 跨到深色时段照常轮换', async () => {
+    const world = new World(at(8, 50), DARK[0]);
+    world.settings.lightThemes = [];
+    await world.open().load();
+    await world.advance(5 * 60 * MINUTE); // 13:50
+    expect(world.writes).toEqual([]);
+    await world.advance(4 * 60 * MINUTE + 11 * MINUTE); // 18:01
+    expect(world.writes).toHaveLength(1);
+    expect(DARK).toContain(world.userTheme);
+    await world.advance(60 * MINUTE); // 19:01
+    expect(world.writes).toHaveLength(2);
   });
 
   it('下一个主题命令在池里都没装时提示', async () => {

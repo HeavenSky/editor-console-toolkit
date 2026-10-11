@@ -10,7 +10,13 @@ import { readSystemKind } from '../../src/themes/system';
 const platform = process.platform;
 const setPlatform = (value: NodeJS.Platform) => Object.defineProperty(process, 'platform', { value });
 
-afterEach(() => setPlatform(platform));
+const desktop = process.env.XDG_CURRENT_DESKTOP;
+
+afterEach(() => {
+  setPlatform(platform);
+  if (desktop === undefined) delete process.env.XDG_CURRENT_DESKTOP;
+  else process.env.XDG_CURRENT_DESKTOP = desktop;
+});
 
 const replying =
   (reply: (file: string, args: string[]) => string | Error): RunCommand =>
@@ -45,9 +51,48 @@ describe('readSystemKind', () => {
     expect(await readSystemKind(replying(() => out))).toBe('dark');
   });
 
-  it('GNOME 的 color-scheme 为 default 时按 gtk-theme 名称判断', async () => {
+  it('Linux 优先读 xdg portal', async () => {
     setPlatform('linux');
-    const run = replying((_, args) => (args.includes('color-scheme') ? "'default'\n" : "'Adwaita-dark'\n"));
+    const run = replying((file) => (file === 'gdbus' ? '(<<uint32 1>>,)\n' : "'prefer-light'\n"));
+    expect(await readSystemKind(run)).toBe('dark');
+  });
+
+  it('portal 无偏好或不可用时读 GNOME 的 color-scheme', async () => {
+    setPlatform('linux');
+    const run = replying((file) => (file === 'gdbus' ? '(<<uint32 0>>,)\n' : "'prefer-light'\n"));
+    expect(await readSystemKind(run)).toBe('light');
+  });
+
+  it('KDE: color-scheme 为 default 时读 kdeglobals 的配色方案, 不按 gtk-theme 误判', async () => {
+    setPlatform('linux');
+    process.env.XDG_CURRENT_DESKTOP = 'KDE';
+    const run = replying((file, args) => {
+      if (file === 'gdbus' || file === 'kreadconfig6') return new Error(`${file} 执行失败: ENOENT`);
+      if (file === 'kreadconfig5') return 'BreezeDark\n';
+      return args.includes('color-scheme') ? "'default'\n" : "'Breeze'\n";
+    });
+    expect(await readSystemKind(run)).toBe('dark');
+  });
+
+  it('KDE 下都读不到时为未知', async () => {
+    setPlatform('linux');
+    process.env.XDG_CURRENT_DESKTOP = 'KDE';
+    const run = replying((file, args) => {
+      if (file === 'gdbus') return new Error('gdbus 执行失败: ENOENT');
+      if (file.startsWith('kreadconfig')) return '';
+      return args.includes('color-scheme') ? "'default'\n" : "'Breeze'\n";
+    });
+    expect(await readSystemKind(run)).toBeUndefined();
+  });
+
+  it('非 KDE 时 color-scheme 为 default 按 gtk-theme 名称兜底', async () => {
+    setPlatform('linux');
+    process.env.XDG_CURRENT_DESKTOP = 'GNOME';
+    const run = replying((file, args) => {
+      if (file === 'gdbus') return new Error('gdbus 执行失败: ENOENT');
+      if (file.startsWith('kreadconfig')) return new Error(`${file} 执行失败: ENOENT`);
+      return args.includes('color-scheme') ? "'default'\n" : "'Adwaita-dark'\n";
+    });
     expect(await readSystemKind(run)).toBe('dark');
   });
 

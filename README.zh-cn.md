@@ -380,18 +380,18 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 | `editorConsoleToolkit.themes.interval` | `number` | `60` | 轮换间隔(分钟), 按本地时钟对齐. 小于 `30` 表示不轮换, 只切换深浅; 大于 `20160`(两周)按两周计. |
 | `editorConsoleToolkit.themes.darkThemes` | `string[]` | Comfort 的 4 个深色主题 | 参与轮换的深色主题, 按顺序轮换, 填 **首选项: 颜色主题** 里显示的名字. |
 | `editorConsoleToolkit.themes.lightThemes` | `string[]` | Comfort 的 4 个浅色主题 | 参与轮换的浅色主题, 按顺序轮换. |
-| `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` 按 `lightTime` / `darkTime` 切换深浅; `system` 跟随系统外观(macOS, Windows, GNOME 系 Linux); `keep` 保持当前深浅. |
+| `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` 按 `lightTime` / `darkTime` 切换深浅; `system` 跟随系统外观(macOS, Windows, 以及通过 XDG desktop portal, GNOME 或 KDE 设置识别的 Linux), 每 10 分钟与窗口重新获得焦点时重新检查; `keep` 保持当前深浅. |
 | `editorConsoleToolkit.themes.lightTime` | `string` | `09:00` | `schedule` 时切到浅色列表的时刻. |
 | `editorConsoleToolkit.themes.darkTime` | `string` | `18:00` | `schedule` 时切到深色列表的时刻. |
 
 ### 它是怎么决定的
 
 - **只管列表里的主题.** 换成两个列表都没有的主题(任何插件或 VS Code 自带的) 会暂停轮换, 设置不变; 再换回列表里的主题就从它接着轮. 把当前主题从列表里删掉效果相同.
-- **跳过没安装的主题.** 写入主题前先检查是否已安装, 没装就取列表里下一个已安装的; 列表里一个都没装时暂停, 装上主题或修改设置后自动恢复.
+- **跳过没安装的主题.** 写入主题前先检查是否已安装, 没装就取列表里下一个已安装的; 要切去的列表一个都没装时本时段保持当前主题, 装上主题, 修改设置或进入下一个时段后自动恢复 — 所以只填深色列表时白天会一直保持深色主题. 若某个已安装扩展提供的主题名字无法确定(label 为 `%占位符%` 且没有 `id`), 对不上的名字按已安装处理, 不跳过.
 - **启动不闪.** 加载时当前主题的深浅符合要求就保留, 视为本时段的主题并从它接着轮; 只有深浅不符(例如早上仍是深色)才立即切换.
 - **手动选的列表主题** 保留到下一个切换时间点, 之后从它的下一个接着轮.
 - **多窗口每个时段只换一次.** 各窗口按时钟算出同一个主题, 只有获得焦点的窗口计时; 后台窗口休眠, 重新获得焦点时补判.
-- **工作区设置优先.** `workbench.colorTheme` 由工作区设置(`.vscode/settings.json` 或 `.code-workspace` 文件) 决定的窗口不动. `window.autoDetectColorScheme` 会覆盖 `workbench.colorTheme`, 使用本功能需将其关闭.
+- **工作区设置优先.** 轮换只写用户级 `workbench.colorTheme`. 主题由工作区设置(`.vscode/settings.json` 或 `.code-workspace` 文件) 决定的窗口仍显示工作区主题, 但获得焦点时照常驱动用户级主题轮换; 修改工作区主题不算手动选择, **下一个主题** 在该窗口不生效. `window.autoDetectColorScheme` 会覆盖 `workbench.colorTheme`, 使用本功能需将其关闭.
 - **远程窗口不参与**, 因为那里的时钟, 时区与系统外观属于远程机器; 由本机窗口负责切换.
 
 ---
@@ -402,7 +402,7 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 - **无运行时依赖.** 插件以单个打包文件发布.
 - **控制台工具箱是纯命令式的** — 没有监听器, 没有计时器, 没有状态栏项. 在你执行命令之前它什么都不做.
 - **端口工具箱只在你看着它的时候工作.** 扫描计时器仅在其视图可见期间存在.
-- **主题工具箱只在获得焦点的窗口里挂一个定时器.** 最多每 5 分钟醒一次, 只在切换时间点或修改设置时读取系统外观; 后台窗口, 远程窗口与主题由工作区设置决定的窗口什么都不做.
+- **主题工具箱只在获得焦点的窗口里挂一个定时器.** 最多每 5 分钟醒一次, 只在 `appearance` 为 `system` 时, 于切换时间点, 每 10 分钟, 窗口重新获得焦点或修改设置时读取系统外观; 后台窗口与远程窗口什么都不做.
 - **校验和工具箱只在你执行它的时候碰磁盘.** 没有启动扫描, 不提权, 除了编辑器自身的安装目录与你的临时目录之外不写任何地方.
 
 这些不只是口头承诺: 一旦 console 那一侧的代码里出现计时器, 监听器或常驻 UI 的 API, 构建就会失败.

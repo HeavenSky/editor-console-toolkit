@@ -20,6 +20,25 @@ export function themeIdsFromManifest(themes: unknown): string[] {
     .filter((id): id is string => typeof id === 'string' && id !== '');
 }
 
+/**
+ * 清单里是否有名字无法确定的主题: 没有 `id` 而 `label` 是 `%占位符%`。这种主题实际写进
+ * `workbench.colorTheme` 的是本地化后的 label, 扩展 API 拿不到, 收集到的名字对不上。
+ */
+export function hasUnresolvedTheme(themes: unknown): boolean {
+  if (!Array.isArray(themes)) return false;
+  return themes.some(
+    (theme) => theme?.id === undefined && typeof theme?.label === 'string' && /^%.+%$/.test(theme.label)
+  );
+}
+
+/**
+ * 已安装检查: 名字在收集到的主题里即已安装; 存在名字无法确定的主题时, 对不上的名字也按已安装处理
+ * (fail-open), 宁可写入一个没装的主题让 VS Code 回退默认主题, 也不把装了的主题误判为没装而永远跳过。
+ */
+export function installedChecker(ids: ReadonlySet<string>, unresolved: boolean): (label: string) => boolean {
+  return (label) => unresolved || ids.has(label);
+}
+
 /** 配置里的一份主题列表: 只保留非空字符串并按首次出现去重, 顺序即轮换顺序。 */
 export function poolFrom(configured: unknown): string[] {
   if (!Array.isArray(configured)) return [];
@@ -34,7 +53,7 @@ export function kindOf(label: string | undefined, pools: Pools): Kind | undefine
   return undefined;
 }
 
-/** 主题是否在深色或浅色轮换池中; 换到池外主题会暂停轮换。 */
+/** 主题是否在深色或浅色轮换池中; 当前主题在池外即视为暂停轮换。 */
 export function inRotation(label: string | undefined, pools: Pools): boolean {
   return kindOf(label, pools) !== undefined;
 }
@@ -143,7 +162,7 @@ export interface RotationInput {
 export interface Rotation {
   /** 明暗与时段的组合; 与上次处理过的 key 相同时不再切换, 以保留期间的手动选择。 */
   key: string;
-  /** 本时段应使用的主题; 池里的主题都没安装时为 undefined, 调用方据此暂停。 */
+  /** 本时段应使用的主题; 池里的主题都没安装时为 undefined, 调用方本时段不切换。 */
   target: string | undefined;
 }
 
@@ -190,7 +209,16 @@ export function parseWindowsAppearance(stdout: string): Kind | undefined {
   return Number.parseInt(match[1], 16) === 0 ? 'dark' : 'light';
 }
 
-/** Linux (GNOME 系): 先看 `color-scheme`, 为 `default` 等非明确值时再按 `gtk-theme` 名称判断。 */
+/** Linux (xdg-desktop-portal): `gdbus call ... Settings.Read org.freedesktop.appearance color-scheme` 输出 `uint32 1` 为深色, `2` 为浅色, `0` 为无偏好。 */
+export function parsePortalColorScheme(stdout: string): Kind | undefined {
+  const match = /uint32\s+(\d+)/.exec(stdout);
+  if (!match) return undefined;
+  if (match[1] === '1') return 'dark';
+  if (match[1] === '2') return 'light';
+  return undefined;
+}
+
+/** Linux (GNOME 系): `gsettings get org.gnome.desktop.interface color-scheme`; `default` 等非明确值返回 undefined。 */
 export function parseGnomeColorScheme(stdout: string): Kind | undefined {
   const value = stdout.trim().replace(/^'|'$/g, '');
   if (value === 'prefer-dark') return 'dark';
@@ -198,6 +226,14 @@ export function parseGnomeColorScheme(stdout: string): Kind | undefined {
   return undefined;
 }
 
+/** Linux (KDE): `kreadconfig6 --file kdeglobals --group General --key ColorScheme` 输出配色方案名; 未设置时输出为空, 返回 undefined。 */
+export function parseKdeColorScheme(stdout: string): Kind | undefined {
+  const value = stdout.trim();
+  if (value === '') return undefined;
+  return /dark/i.test(value) ? 'dark' : 'light';
+}
+
+/** 最后的兜底: 按 GTK 主题名是否含 `dark` 判断。 */
 export function parseGtkThemeName(stdout: string): Kind {
   return /dark/i.test(stdout) ? 'dark' : 'light';
 }

@@ -4,7 +4,9 @@ import {
   type Kind,
   parseGnomeColorScheme,
   parseGtkThemeName,
+  parseKdeColorScheme,
   parseMacAppearance,
+  parsePortalColorScheme,
   parseWindowsAppearance,
 } from './core';
 
@@ -41,9 +43,30 @@ export async function readSystemKind(run: RunCommand = runCommand): Promise<Kind
       return out === undefined ? undefined : parseWindowsAppearance(out);
     }
     case 'linux': {
+      // 依次: 桌面无关的 xdg portal, GNOME 的 color-scheme, KDE 的配色方案名, 最后按 GTK 主题名兜底。
+      const portal = await stdout('gdbus', [
+        'call',
+        '--session',
+        '--dest',
+        'org.freedesktop.portal.Desktop',
+        '--object-path',
+        '/org/freedesktop/portal/desktop',
+        '--method',
+        'org.freedesktop.portal.Settings.Read',
+        'org.freedesktop.appearance',
+        'color-scheme',
+      ]);
+      const fromPortal = portal === undefined ? undefined : parsePortalColorScheme(portal);
+      if (fromPortal) return fromPortal;
       const scheme = await stdout('gsettings', ['get', 'org.gnome.desktop.interface', 'color-scheme']);
-      const kind = scheme === undefined ? undefined : parseGnomeColorScheme(scheme);
-      if (kind) return kind;
+      const fromGnome = scheme === undefined ? undefined : parseGnomeColorScheme(scheme);
+      if (fromGnome) return fromGnome;
+      const kdeArgs = ['--file', 'kdeglobals', '--group', 'General', '--key', 'ColorScheme'];
+      const kde = (await stdout('kreadconfig6', kdeArgs)) ?? (await stdout('kreadconfig5', kdeArgs));
+      const fromKde = kde === undefined ? undefined : parseKdeColorScheme(kde);
+      if (fromKde) return fromKde;
+      // KDE 下 GTK 主题名与实际配色无关, 按它判断会误判, 宁可按 keep 处理。
+      if (/kde/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')) return undefined;
       const gtk = await stdout('gsettings', ['get', 'org.gnome.desktop.interface', 'gtk-theme']);
       return gtk === undefined ? undefined : parseGtkThemeName(gtk);
     }

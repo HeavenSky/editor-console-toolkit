@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { type Kind, themeIdsFromManifest, themeSetByWorkspace } from './core';
+import { hasUnresolvedTheme, installedChecker, type Kind, themeIdsFromManifest, themeSetByWorkspace } from './core';
 import { createRotation, type RotationNotice, type RotationSettings } from './rotation';
 import { readSystemKind } from './system';
 
@@ -14,9 +14,10 @@ import { readSystemKind } from './system';
 
 const SECTION = 'editorConsoleToolkit.themes';
 
-/** 所有已安装扩展(含内置)贡献的颜色主题, 按写进 `workbench.colorTheme` 的名字收集。 */
-function installedThemes(): Set<string> {
-  return new Set(vscode.extensions.all.flatMap((extension) => themeIdsFromManifest(extension.packageJSON?.contributes?.themes)));
+/** 所有已安装扩展(含内置)贡献的颜色主题, 按写进 `workbench.colorTheme` 的名字收集成已安装检查。 */
+function installedThemes(): (label: string) => boolean {
+  const manifests = vscode.extensions.all.map((extension) => extension.packageJSON?.contributes?.themes as unknown);
+  return installedChecker(new Set(manifests.flatMap(themeIdsFromManifest)), manifests.some(hasUnresolvedTheme));
 }
 
 export function registerThemeRotation(context: vscode.ExtensionContext): void {
@@ -39,7 +40,7 @@ export function registerThemeRotation(context: vscode.ExtensionContext): void {
 
   const rotation = createRotation({
     now: () => Date.now(),
-    installed: (label) => installed.has(label),
+    installed: (label) => installed(label),
     settings: () => {
       // 不传默认值: 取清单里声明的默认值, 两处各写一份会漂移。
       const config = vscode.workspace.getConfiguration(SECTION);
@@ -53,7 +54,10 @@ export function registerThemeRotation(context: vscode.ExtensionContext): void {
         darkTime: config.get('darkTime'),
       } as RotationSettings;
     },
-    currentTheme: () => workbench().get<string>('colorTheme'),
+    currentTheme: () => {
+      const inspected = workbench().inspect<string>('colorTheme');
+      return inspected?.globalValue ?? inspected?.defaultValue;
+    },
     themeSetByWorkspace: () => themeSetByWorkspace(workbench().inspect<string>('colorTheme')),
     autoDetectColorScheme: () =>
       vscode.workspace.getConfiguration('window').get<boolean>('autoDetectColorScheme') === true,

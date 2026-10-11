@@ -43,7 +43,10 @@ export interface RotationHost {
   /** 主题(`workbench.colorTheme` 的取值)当前是否已安装。 */
   installed(label: string): boolean;
   settings(): RotationSettings;
-  /** 当前生效的 `workbench.colorTheme`. */
+  /**
+   * 用户级的 `workbench.colorTheme`(用户设置, 未设置时为默认值). 轮换只读写用户级主题, 所以
+   * 主题被工作区设置决定的窗口也照常驱动轮换, 只是本窗口显示的仍是工作区主题.
+   */
   currentTheme(): string | undefined;
   /** 本窗口的主题被工作区设置决定. */
   themeSetByWorkspace(): boolean;
@@ -64,13 +67,14 @@ export interface RotationHost {
 
 export const LAST_KEY = 'themes.lastKey';
 export const SHIFT_KEY = 'themes.shift';
-export const PAUSED_KEY = 'themes.paused';
 export const CONFIG_KEY = 'themes.config';
 
 // 定时器在节点之后稍晚触发, 确保按分钟取整的时间表与时段都已进入新值.
 const BOUNDARY_MARGIN_MS = 1_000;
 // 系统休眠期间定时器的时钟不走, 一次只等这么久, 醒来按真实时钟重算, 避免休眠后切换整体推迟.
 export const MAX_WAIT_MS = 5 * 60_000;
+// 外观跟随系统时, 系统外观随时可能变, 至少每隔这么久重新查一次.
+export const SYSTEM_POLL_MS = 10 * 60_000;
 
 export interface Rotation {
   tick(refreshSystem?: boolean): Promise<void>;
@@ -93,6 +97,8 @@ export function createRotation(host: RotationHost): Rotation {
   let coldStart = true;
   /** 最近一次检查时本窗口的主题是否被工作区设置决定. */
   let overridden = host.themeSetByWorkspace();
+  /** 最近一次看到的用户级主题, 用于在被工作区覆盖的窗口里区分用户主题与工作区主题的变化. */
+  let lastUserTheme = host.currentTheme();
   /** 最近一次判定出的明暗, undefined 表示保持当前明暗. */
   let desired: Kind | undefined;
   let systemKind: Kind | undefined;
@@ -152,25 +158,33 @@ export function createRotation(host: RotationHost): Rotation {
     timer = undefined;
   }
 
-  /** 排下一个时间节点; 未开启, 窗口不在前台或主题被工作区设置决定时不排, 由重新获得焦点触发. */
+  /**
+   * 排下一个时间节点; 未开启或窗口不在前台时不排, 由重新获得焦点触发. 外观跟随系统时另有轮询节点,
+   * 到点重新查系统外观, 否则间隔小于 30 分钟时没有节点, 系统切换后永远不跟.
+   */
   function schedule(): void {
     clearTimer();
-    if (!host.settings().enabled || !host.focused() || host.themeSetByWorkspace()) return;
+    if (!host.settings().enabled || !host.focused()) return;
     const now = host.now();
-    const scheduleClocks = host.settings().appearance === 'schedule'
+    const { appearance } = host.settings();
+    const scheduleClocks = appearance === 'schedule'
       ? clocks().filter((clock): clock is number => clock !== undefined)
       : [];
-    const at = nextBoundary(now, interval(), new Date(now).getTimezoneOffset(), scheduleClocks);
-    if (at === undefined) return;
-    waitUntil(at + BOUNDARY_MARGIN_MS);
+    const boundary = nextBoundary(now, interval(), new Date(now).getTimezoneOffset(), scheduleClocks);
+    const poll = appearance === 'system' ? now + SYSTEM_POLL_MS : undefined;
+    if (poll !== undefined && (boundary === undefined || poll < boundary + BOUNDARY_MARGIN_MS)) {
+      waitUntil(poll, true);
+    } else if (boundary !== undefined) {
+      waitUntil(boundary + BOUNDARY_MARGIN_MS, false);
+    }
   }
 
   /** 分段等到 `due`; 中途醒来不能重算节点, 否则正好醒在边界上时会算出再下一个节点而跳过这次切换. */
-  function waitUntil(due: number): void {
+  function waitUntil(due: number, refreshSystem: boolean): void {
     timer = host.setTimer(() => {
       timer = undefined;
-      if (host.now() >= due) void tick();
-      else waitUntil(due);
+      if (host.now() >= due) void tick(refreshSystem);
+      else waitUntil(due, refreshSystem);
     }, Math.min(due - host.now(), MAX_WAIT_MS));
   }
 
@@ -179,7 +193,7 @@ export function createRotation(host: RotationHost): Rotation {
       pending = Boolean(pending) || refreshSystem;
       return;
     }
-    if (!host.settings().enabled || !host.focused() || host.themeSetByWorkspace()) {
+    if (!host.settings().enabled || !host.focused()) {
       clearTimer();
       return;
     }
@@ -196,12 +210,7 @@ export function createRotation(host: RotationHost): Rotation {
       const current = host.currentTheme();
       const loading = coldStart;
       coldStart = false;
-      let paused = state.get<boolean>(PAUSED_KEY) ?? false;
-      if (paused && configChanged && inRotation(current, pools())) {
-        await state.update(PAUSED_KEY, false);
-        paused = false;
-      }
-      if (paused) return;
+      // 当前主题不在池内即为暂停: planRotation 返回 undefined, 不做任何改动.
       if (loading && !mustSwitchOnLoad(current, desired, pools())) {
         // 加载时明暗已符合: 不切换, 只以当前主题为起点重算.
         if (current) await anchor(current, desired);
@@ -217,13 +226,10 @@ export function createRotation(host: RotationHost): Rotation {
         installed,
       });
       if (plan && plan.key !== state.get<string>(LAST_KEY)) {
-        if (plan.target === undefined) {
-          // 池里的主题一个都没装: 暂停, 装上主题或改配置时重新检查。
-          await state.update(PAUSED_KEY, true);
-          return;
-        }
+        // 要切去的池一个都没装时只记下本时段已处理, 不再重试; 装上主题或改配置会改变签名而重新判定,
+        // 进入下一个时段(例如回到另一深浅)照常判定.
         await state.update(LAST_KEY, plan.key);
-        if (plan.target !== current) await applyTheme(plan.target);
+        if (plan.target !== undefined && plan.target !== current) await applyTheme(plan.target);
       }
     } catch (error) {
       console.error('[editor-console-toolkit] theme rotation failed', error);
@@ -240,24 +246,23 @@ export function createRotation(host: RotationHost): Rotation {
   }
 
   /**
-   * `workbench.colorTheme` 变化: 换到池内主题(手动或自动)以它为起点重算, 已暂停的随之恢复;
-   * 换到池外主题则暂停, 设置不变. 主题被工作区设置决定时这类变化来自工作区, 不算手动选择.
+   * `workbench.colorTheme` 变化: 换到池内主题(手动或自动)以它为起点重算, 暂停的随之恢复;
+   * 换到池外主题即暂停(由当前主题不在池内推出), 设置不变. 主题被工作区设置决定的窗口里,
+   * 只有用户级主题变化才算手动选择, 工作区主题的变化与轮换无关.
    */
   function onThemeChanged(): void {
+    const label = host.currentTheme();
+    const userChanged = label !== lastUserTheme;
+    lastUserTheme = label;
     // 只由前台窗口处理, 后台窗口在休眠, 也避免它们事后覆盖前台窗口刚写下的标记.
     if (!host.focused()) return;
     const wasOverridden = overridden;
     overridden = host.themeSetByWorkspace();
-    if (wasOverridden || overridden) {
+    if ((wasOverridden || overridden) && !userChanged) {
       void tick();
       return;
     }
-    const label = host.currentTheme();
-    if (label !== undefined && inRotation(label, pools())) {
-      void state.update(PAUSED_KEY, false).then(() => anchor(label, desired));
-    } else {
-      void state.update(PAUSED_KEY, true);
-    }
+    if (label !== undefined && inRotation(label, pools())) void anchor(label, desired);
   }
 
   /** 后台窗口不处理, 回到前台时由 `tick` 比对设置签名补上. */
@@ -270,7 +275,8 @@ export function createRotation(host: RotationHost): Rotation {
   }
 
   function onFocusChanged(focused: boolean): void {
-    if (focused) void tick();
+    // 后台期间系统外观可能已变, 回到前台时重新查.
+    if (focused) void tick(true);
     else clearTimer();
   }
 
