@@ -440,6 +440,8 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 
 端口工具箱与校验和工具箱的下一步都是在真机上验证 Linux 与 Windows — 端口解析器与"安装目录不可写"这条路径都已实现且有测试覆盖, 但只在 macOS 上真跑过.
 
+主题工具箱在 Linux 上的系统外观检测 (XDG desktop portal, GNOME `gsettings`, KDE `kreadconfig6` / `kreadconfig5`) 同样有测试覆盖, 但还没在真实的 Linux 桌面上跑过; 这项验证等有需求时再做. 检测失败时 `system` 按 `keep` 处理, 轮换照常进行.
+
 ## 开发
 
 ```bash

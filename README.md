@@ -436,6 +436,8 @@ Console Toolkit language support ships in tiers, because each language needs its
 
 For Port Toolkit and Checksum Toolkit, the next step is verifying Linux and Windows on real machines — the port parsers and the not-writable-installation path are both implemented and tested, but only exercised for real on macOS.
 
+Theme Toolkit's Linux appearance detection (XDG desktop portal, GNOME `gsettings`, KDE `kreadconfig6` / `kreadconfig5`) is likewise covered by tests but not yet run on a real Linux desktop; that check is deferred until there is demand. If detection fails, `system` behaves like `keep`, so rotation still works.
+
 ## Development
 
 ```bash
