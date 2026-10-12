@@ -6,10 +6,11 @@
 //   checksums        Checksum Toolkit: 命令面板里的两个命令
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { launch, gitInit } from './lib/shoot-ext.mjs';
 
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const APP_TS = `import { readFile } from './io';
 
