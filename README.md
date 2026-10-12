@@ -51,6 +51,8 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 ## Console Toolkit
 
+![Debug logs inserted with Alt+L](./media/screenshots/console-log.png)
+
 ### Commands
 
 Type `Console Toolkit` in the Command Palette to find all three.
@@ -84,6 +86,8 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 const user = getUser();
 // console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 ```
+
+![Every generated log commented out by Toggle All Console Logs](./media/screenshots/console-log-toggled.png)
 
 If some logs are commented and others are not, the first run comments out the rest so the file ends up consistent. If the file has no generated logs, it says so and changes nothing.
 
@@ -207,6 +211,8 @@ Everything else gets inserted at one of the three places in the table above. Whe
 
 Click the **Port Toolkit** icon in the Activity Bar. The view lists every process listening on a local port — **one row per process, not one row per port**. The first row is always the search row:
 
+![Port Toolkit view filtered to the workspace, one row expanded](./media/screenshots/ports.png)
+
 ```text
 PORT TOOLKIT                                  🗑  ⧩  ⟳
   🔍 Search                for example 3000, node, ~/repo
@@ -311,6 +317,8 @@ When the system will not say which process owns a socket — on Linux this happe
 
 Patch VS Code's own files — a CSS/JS injection, a UI tweak — and the next start greets you with **"Your installation appears to be corrupt"** and `[Unsupported]` in the title bar: the checksums recorded in `product.json` no longer match the files on disk. This feature area recalculates them.
 
+![Checksum Toolkit commands in the Command Palette](./media/screenshots/checksums.png)
+
 ### Commands
 
 | Command | ID |
@@ -358,7 +366,9 @@ The commands refuse to run, with the reason shown, in a Remote (SSH, WSL, contai
 
 ## Theme Toolkit
 
-Rotates your color theme through lists you choose — for example every hour on the hour — and switches between a dark list and a light list by time of day or by your operating system's appearance. The lists can name **any installed theme**; out of the box they hold the eight themes of [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme), and nothing happens until the current theme is one of them.
+Rotates your color theme through lists you choose — for example every hour on the hour — and switches between a dark list and a light list by time of day or by your operating system's appearance. The lists can name **any installed theme**; out of the box they hold the sixteen themes of [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme), and nothing happens until the current theme is one of them.
+
+![Theme Toolkit settings](./media/screenshots/theme-settings.png)
 
 ### Commands
 
@@ -374,8 +384,8 @@ Moves to the next installed theme of the same kind right away. It ships without 
 | --- | --- | --- | --- |
 | `editorConsoleToolkit.themes.enabled` | `boolean` | `true` | Turn rotation on or off. |
 | `editorConsoleToolkit.themes.interval` | `number` | `60` | Minutes between rotations, aligned to the local clock. Below `30` means no rotation (only dark/light switching); above `20160` (two weeks) counts as two weeks. |
-| `editorConsoleToolkit.themes.darkThemes` | `string[]` | the four Comfort dark themes | Dark themes to rotate through, in order, by the name shown in **Preferences: Color Theme**. |
-| `editorConsoleToolkit.themes.lightThemes` | `string[]` | the four Comfort light themes | Light themes to rotate through, in order. |
+| `editorConsoleToolkit.themes.darkThemes` | `string[]` | the eight Comfort dark themes | Dark themes to rotate through, in order, by the name shown in **Preferences: Color Theme**. |
+| `editorConsoleToolkit.themes.lightThemes` | `string[]` | the eight Comfort light themes | Light themes to rotate through, in order. |
 | `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` switches dark/light at `lightTime` / `darkTime`; `system` follows the OS appearance (macOS, Windows, and Linux via the XDG desktop portal, GNOME or KDE settings), rechecked every 10 minutes and when the window regains focus; `keep` stays dark or light. |
 | `editorConsoleToolkit.themes.lightTime` | `string` | `09:00` | `schedule`: switch to the light list at this time. |
 | `editorConsoleToolkit.themes.darkTime` | `string` | `18:00` | `schedule`: switch to the dark list at this time. |
@@ -434,7 +444,10 @@ npm run check       # icon, manifest, l10n and template drift gates
 npm run typecheck
 npm test
 npm run package     # build artifacts/<name>-<version>.vsix and assert its contents
+npm run shots       # regenerate the README screenshots in media/screenshots/ (macOS, run by hand)
 ```
+
+`npm run shots` opens a separate VS Code window with its own profile, demonstrates each feature and saves compressed screenshots to `media/screenshots/` (full-size originals go to `artifacts/shots/`). Leave the window alone while it runs. It is never part of packaging or release; rerun it by hand when the UI changes and commit the updated images with the README.
 
 With npm 12, `npm ci` only accepts a lockfile resolved from `registry.npmjs.org`, and dependency install scripts (`esbuild`, `@vscode/vsce-sign`, `fsevents`) are skipped by default. None of them is needed to check, test or package; approve one with `npm install-scripts approve <package>` only if signing or publishing locally fails. CI uses the npm bundled with the Node version in `.nvmrc` and is not affected.
 

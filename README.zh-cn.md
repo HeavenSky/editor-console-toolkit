@@ -55,6 +55,8 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 ## 控制台工具箱 (Console Toolkit)
 
+![用 Alt+L 插入的调试日志](./media/screenshots/console-log.png)
+
 ### 命令
 
 在命令面板输入 `控制台工具箱` 即可找到全部三条.
@@ -88,6 +90,8 @@ console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 const user = getUser();
 // console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 ```
+
+![Toggle All Console Logs 把生成的日志全部注释掉](./media/screenshots/console-log-toggled.png)
 
 如果文件里一部分已注释一部分没有, 第一次执行会把剩下的也注释掉, 使整个文件状态一致. 文件里没有本插件生成的日志时, 它会提示并且什么都不改.
 
@@ -211,6 +215,8 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 点开活动栏的 **端口工具箱** 图标. 视图列出每个正在监听本机端口的进程 — **一行一个进程, 而不是一行一个端口**. 第一行固定是搜索行:
 
+![端口工具箱视图: 按工作区筛选并展开一行](./media/screenshots/ports.png)
+
 ```text
 端口工具箱                                    🗑  ⧩  ⟳
   🔍 搜索                       例如 3000, node, ~/repo
@@ -315,6 +321,8 @@ macOS, Linux 与 Windows.
 
 改过 VS Code 自身的文件 (注入 CSS/JS, 调整界面) 之后, 下次启动它就会告诉你 **"安装似乎已损坏"**, 标题栏还带上 `[Unsupported]`: `product.json` 里记录的校验和与磁盘上的文件不再对得上. 这个功能域负责把校验和重算回去.
 
+![命令面板里的校验和工具箱命令](./media/screenshots/checksums.png)
+
 ### 命令
 
 | 命令 | ID |
@@ -362,7 +370,9 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 
 ## 主题工具箱 (Theme Toolkit)
 
-在你指定的主题列表之间轮换颜色主题 — 例如每到整点换一个 — 并按时间段或操作系统外观在深色列表与浅色列表之间切换. 列表里可以填 **任何已安装的主题**; 默认是 [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme) 的 8 个主题, 当前主题不在列表里时什么都不做.
+在你指定的主题列表之间轮换颜色主题 — 例如每到整点换一个 — 并按时间段或操作系统外观在深色列表与浅色列表之间切换. 列表里可以填 **任何已安装的主题**; 默认是 [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme) 的 16 个主题, 当前主题不在列表里时什么都不做.
+
+![主题工具箱的配置](./media/screenshots/theme-settings.png)
 
 ### 命令
 
@@ -378,8 +388,8 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 | --- | --- | --- | --- |
 | `editorConsoleToolkit.themes.enabled` | `boolean` | `true` | 开启或关闭轮换. |
 | `editorConsoleToolkit.themes.interval` | `number` | `60` | 轮换间隔(分钟), 按本地时钟对齐. 小于 `30` 表示不轮换, 只切换深浅; 大于 `20160`(两周)按两周计. |
-| `editorConsoleToolkit.themes.darkThemes` | `string[]` | Comfort 的 4 个深色主题 | 参与轮换的深色主题, 按顺序轮换, 填 **首选项: 颜色主题** 里显示的名字. |
-| `editorConsoleToolkit.themes.lightThemes` | `string[]` | Comfort 的 4 个浅色主题 | 参与轮换的浅色主题, 按顺序轮换. |
+| `editorConsoleToolkit.themes.darkThemes` | `string[]` | Comfort 的 8 个深色主题 | 参与轮换的深色主题, 按顺序轮换, 填 **首选项: 颜色主题** 里显示的名字. |
+| `editorConsoleToolkit.themes.lightThemes` | `string[]` | Comfort 的 8 个浅色主题 | 参与轮换的浅色主题, 按顺序轮换. |
 | `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` 按 `lightTime` / `darkTime` 切换深浅; `system` 跟随系统外观(macOS, Windows, 以及通过 XDG desktop portal, GNOME 或 KDE 设置识别的 Linux), 每 10 分钟与窗口重新获得焦点时重新检查; `keep` 保持当前深浅. |
 | `editorConsoleToolkit.themes.lightTime` | `string` | `09:00` | `schedule` 时切到浅色列表的时刻. |
 | `editorConsoleToolkit.themes.darkTime` | `string` | `18:00` | `schedule` 时切到深色列表的时刻. |
@@ -438,7 +448,10 @@ npm run check       # 图标, 清单, l10n 与骨架漂移门禁
 npm run typecheck
 npm test
 npm run package     # 生成 artifacts/<名称>-<版本>.vsix 并断言包内容
+npm run shots       # 重新生成 media/screenshots/ 下的 README 截图 (macOS, 手动执行)
 ```
+
+`npm run shots` 会用独立的配置目录打开一个单独的 VS Code 窗口, 逐个演示功能并把压缩后的截图存到 `media/screenshots/` (原尺寸截图在 `artifacts/shots/`). 运行期间不要操作这个窗口. 它不参与打包与发布; 界面有变化时手动重跑, 把更新的图片和 README 一起提交.
 
 使用 npm 12 时, `npm ci` 只接受从 `registry.npmjs.org` 解析的 lockfile, 且依赖的安装脚本(`esbuild`, `@vscode/vsce-sign`, `fsevents`)默认不执行. 检查, 测试与打包都不需要它们; 只有本地签名或发布报错时, 才用 `npm install-scripts approve <包>` 放行. CI 使用 `.nvmrc` 指定的 Node 版本自带的 npm, 不受影响.
 

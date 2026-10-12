@@ -1,15 +1,24 @@
 # Change Log
 
-## Unreleased
+## v0.0.5 2026-10-12 Theme Toolkit
 
 Adds a fourth feature area: **Theme Toolkit**, for rotating color themes on a schedule.
 
 ### Added
 
-- **Theme rotation** (`editorConsoleToolkit.themes.*`, on by default): rotates through the themes listed in `darkThemes` / `lightThemes` every `interval` minutes on the local clock (60 by default; below 30 means no rotation, above two weeks counts as two weeks), switching dark and light at `lightTime` / `darkTime` or by the OS appearance (macOS, Windows, and Linux via the XDG desktop portal, GNOME or KDE settings; rechecked every 10 minutes and on window focus). The lists accept any installed theme and default to the eight Editor Comfort Theme themes.
+- **Theme rotation** (`editorConsoleToolkit.themes.*`, on by default): rotates through the themes listed in `darkThemes` / `lightThemes` every `interval` minutes on the local clock (60 by default; below 30 means no rotation, above two weeks counts as two weeks), switching dark and light at `lightTime` / `darkTime` or by the OS appearance (macOS, Windows, and Linux via the XDG desktop portal, GNOME or KDE settings; rechecked every 10 minutes and on window focus). The lists accept any installed theme and default to the sixteen Editor Comfort Theme themes.
 - Themes that are not installed are skipped; when none in the list to switch to is installed, rotation keeps going through the current dark/light kind's list until one is installed.
 - Picking a theme outside the lists pauses rotation without changing settings; picking one from the lists resumes it from that theme. Startup only switches when the dark/light kind is wrong. Only the user-level theme is written: a window whose theme is set by workspace settings keeps it but still drives rotation; background windows and Remote windows never switch.
 - **Next Theme** (`editorConsoleToolkit.themes.next`) to rotate right away.
+
+### Changed
+
+- Docs: the README now shows a screenshot of each feature. The images are loaded from GitHub when the page is viewed and are not packaged into the extension.
+
+### Fixed
+
+- The Port Toolkit view now declares its own icon, so it keeps a proper icon after being dragged into another view container or panel.
+- **Insert Console Log** no longer puts the log after the whole function when the function declares a return type ending in `>`, `]` or `}` — for example `function load(): Promise<User> {`, `(): User[] {` or `(): { type: string } {`. The same applies to Rust `-> Result<T, E> {`, Swift `throws -> [Int] {` and Kotlin `: Int? {` signatures.
 
 ## v0.0.4 2026-08-12 Checksum Toolkit
 

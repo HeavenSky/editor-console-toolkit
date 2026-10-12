@@ -10,7 +10,8 @@ e49fc49bd0c5642e  scripts/check.mjs
 0f5371d32121a474  scripts/gen-icon.mjs
 f385005d889e780d  scripts/lib/check-manifest.mjs
 ad4a45be1fc25882  scripts/lib/icon-render.mjs
-0c040169d8b2f5e6  scripts/lib/template-shared.mjs
+2c65610fd474e41f  scripts/lib/shoot-ext.mjs
+b393e4054b279576  scripts/lib/template-shared.mjs
 fe0959618dd84cfb  scripts/lib/vsix-allowlist.mjs
 25183665f064b8d3  scripts/package.mjs
 1800768dbc466d6d  tsconfig.json

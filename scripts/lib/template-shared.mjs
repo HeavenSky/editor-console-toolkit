@@ -49,6 +49,7 @@ export const SHARED_FILES = [
 	"scripts/gen-icon.mjs",
 	"scripts/lib/check-manifest.mjs",
 	"scripts/lib/icon-render.mjs",
+	"scripts/lib/shoot-ext.mjs",
 	"scripts/lib/template-shared.mjs",
 	"scripts/lib/vsix-allowlist.mjs",
 	"scripts/package.mjs",

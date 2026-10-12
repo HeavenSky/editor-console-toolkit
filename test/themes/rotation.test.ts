@@ -177,13 +177,13 @@ const at = (h: number, m = 0, day = 12) => new Date(2026, 9, day, h, m).getTime(
 
 describe('加载', () => {
   it('明暗符合时不切换, 以当前主题为起点, 下一个整点轮到它的下一个', async () => {
-    const world = new World(at(10, 20), LIGHT[2]);
+    const world = new World(at(10, 20), LIGHT.at(-2)!);
     await world.open().load();
-    expect(world.userTheme).toBe(LIGHT[2]);
+    expect(world.userTheme).toBe(LIGHT.at(-2));
     await world.advance(40 * MINUTE);
-    expect(world.userTheme).toBe(LIGHT[2]); // 触发点在节点之后 1 秒
+    expect(world.userTheme).toBe(LIGHT.at(-2)); // 触发点在节点之后 1 秒
     await world.advance(MINUTE);
-    expect(world.userTheme).toBe(LIGHT[3]);
+    expect(world.userTheme).toBe(LIGHT.at(-1));
     await world.advance(60 * MINUTE);
     expect(world.userTheme).toBe(LIGHT[0]);
   });
@@ -437,8 +437,8 @@ describe('下一个主题命令', () => {
 
 describe('未安装的主题', () => {
   it('轮到的主题没安装时顺延到池里下一个已安装的', async () => {
-    const world = new World(at(10, 20), LIGHT[2]);
-    world.installed.delete(LIGHT[3]);
+    const world = new World(at(10, 20), LIGHT.at(-2)!);
+    world.installed.delete(LIGHT.at(-1)!);
     await world.open().load();
     await world.advance(41 * MINUTE);
     expect(world.userTheme).toBe(LIGHT[0]);
