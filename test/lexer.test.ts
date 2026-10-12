@@ -40,6 +40,27 @@ describe('classifyBrace', () => {
     expect(classifyBrace('if x ')).toBe('block');
   });
 
+  it('返回类型注解与泛型声明头之后是块', () => {
+    expect(classifyBrace('function f(): Promise<User> ')).toBe('block');
+    expect(classifyBrace('function f(): Map<string, number> ')).toBe('block');
+    expect(classifyBrace('function f(): User[] ')).toBe('block');
+    expect(classifyBrace('function f(): { a: number } ')).toBe('block');
+    expect(classifyBrace('  async load(): Promise<() => void> ')).toBe('block');
+    expect(classifyBrace('fn f() -> Result<(), E> ')).toBe('block');
+    expect(classifyBrace('func f() throws -> [Int] ')).toBe('block');
+    expect(classifyBrace('fun f(): Int? ')).toBe('block');
+    expect(classifyBrace('class A<T> extends Base<T> ')).toBe('block');
+  });
+
+  it('形似类型但不是返回类型注解的仍是字面量', () => {
+    // C# 集合初始化器, Java 数组初始化器, JSX 表达式容器。
+    expect(classifyBrace('var xs = new List<int> ')).toBeNull();
+    expect(classifyBrace('int[] xs = new int[] ')).toBeNull();
+    expect(classifyBrace('cond ? (a) : <List>')).toBeNull();
+    expect(classifyBrace('<div class="a">')).toBeNull();
+    expect(classifyBrace('const v = c ? ')).toBe('literal');
+  });
+
   it('赋值, 实参与 return 之后是字面量', () => {
     expect(classifyBrace('const o = ')).toBe('literal');
     expect(classifyBrace('send(')).toBe('literal');

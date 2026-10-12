@@ -71,6 +71,12 @@ describe('A 类 · 曾把代码改坏的位置', () => {
     expect(insert('javascript', header, 'Base')).toBe(
       `${LOG('Base')}\nclass A extends Base {\n  run() {}\n}\n`,
     );
+
+    // 泛型 class 头以 `>` 收尾, 同样要认成块, 否则日志会被推到整个 class 之后。
+    const generic = 'class A<T> extends Base<T> {\n  run() {}\n}\n';
+    expect(insert('typescript', generic, 'Base')).toBe(
+      `${LOG('Base')}\nclass A<T> extends Base<T> {\n  run() {}\n}\n`,
+    );
   });
 
   it('A6 跨行模板字符串内部: 拒绝插入', () => {
@@ -115,6 +121,41 @@ describe('B 类 · 曾跑到作用域外的位置', () => {
     const text = 'for (const item of list) {\n  use(item);\n}\n';
     expect(insert('javascript', text, 'const item')).toBe(
       `for (const item of list) {\n  ${LOG('item')}\n  use(item);\n}\n`,
+    );
+  });
+
+  it('B5 返回类型带泛型, 数组或对象类型: 日志仍落在函数体内', () => {
+    // 曾把 `): Promise<User> {` 的 `{` 判成对象字面量, 日志被推到函数的 `}` 之后。
+    const body = (header: string, indent = '  ') =>
+      [`${header}\n${indent}const user = 1;\n`, `${header}\n${indent}const user = 1;\n${indent}${LOG('user')}\n`];
+    const headers = [
+      'function f(): Promise<User> {',
+      'function f(): Map<string, number> {',
+      'function f(): User[] {',
+      'function f<T>(x: T): T[] {',
+      'function f(): { type: string } {',
+      'function f(): [number, string] {',
+      'function f(\n  a: number,\n): Promise<() => void> {',
+    ];
+    for (const languageId of ['typescript', 'javascript']) {
+      for (const header of headers) {
+        const [text, expected] = body(header);
+        expect(insert(languageId, `${text}}\n`, 'const user'), `${languageId}: ${header}`).toBe(`${expected}}\n`);
+      }
+    }
+
+    const method = 'class A {\n  async load(): Promise<T> {\n    const user = 1;\n  }\n}\n';
+    expect(insert('typescript', method, 'const user')).toBe(
+      `class A {\n  async load(): Promise<T> {\n    const user = 1;\n    ${LOG('user')}\n  }\n}\n`,
+    );
+  });
+
+  it('B6 其他语言的返回类型注解同样按函数体处理', () => {
+    expect(insert('rust', 'fn f() -> Result<(), E> {\n    let user = 1;\n}\n', 'let user')).toBe(
+      'fn f() -> Result<(), E> {\n    let user = 1;\n    println!("[D] user: {:?}", user); // ect:v1\n}\n',
+    );
+    expect(insert('kotlin', 'fun f(): Int? {\n    val user = 1\n}\n', 'val user')).toBe(
+      'fun f(): Int? {\n    val user = 1\n    println("[D] user: ${user}") // ect:v1\n}\n',
     );
   });
 });

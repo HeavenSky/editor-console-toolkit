@@ -91,6 +91,11 @@ export function classifyBrace(codeBeforeBrace: string): 'block' | 'literal' | nu
     return 'block';
   }
 
+  // 返回类型注解要先于符号表判定: Kotlin/Swift 的 `): Int? {` 以 `?` 收尾, 会被三元的 `?` 抢走.
+  if (returnTypeStart(code) !== null || isGenericDeclarationHeader(code)) {
+    return 'block';
+  }
+
   for (const symbol of longestFirst([...LITERAL_TAIL_SYMBOLS, ...BLOCK_TAIL_SYMBOLS])) {
     if (!code.endsWith(symbol)) continue;
     // `=>` 同时在两张表里, 块的语义优先: `x => {` 是函数体.
@@ -98,6 +103,94 @@ export function classifyBrace(codeBeforeBrace: string): 'block' | 'literal' | nu
     return 'literal';
   }
   return null;
+}
+
+const OPENER_OF: Readonly<Record<string, string>> = { '>': '<', ']': '[', '}': '{', ')': '(' };
+
+/** `->` 之前允许出现的修饰词: Swift 的 `throws -> T`, `async throws -> T`. */
+const ARROW_RETURN_MODIFIERS = /(\)|\b(?:throws|rethrows|async))\s*$/;
+
+/**
+ * 从 `end` 往回跳过一段类型表达式, 返回它的起点; 遇到不属于类型的字符就停在那里.
+ *
+ * 类型表达式由标识符, 空白, `.` `|` `&` `?` `,` 与成对的 `<>` `[]` `{}` `()` 组成; 成对的
+ * 组整体跳过, 因此对象类型 `{ a: number }` 里的 `:` 不会被当成返回类型的冒号. `<...>` 必须
+ * 紧贴在标识符之后(`Promise<T>`), 以免把 JSX 的 `: <List>` 也当成类型.
+ */
+function skipTypeBackward(code: string, end: number): number {
+  let i = end;
+  while (i > 0) {
+    const ch = code[i - 1];
+    if (/[\w$\s.|&?,]/.test(ch)) {
+      i--;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      // 字符串字面量类型 `"a" | "b"`; 不处理转义, 类型里几乎不会出现.
+      const open = code.lastIndexOf(ch, i - 2);
+      if (open === -1) return i;
+      i = open;
+      continue;
+    }
+    const opener = OPENER_OF[ch];
+    if (opener === undefined) {
+      return i;
+    }
+    // 往回找配对的开符; `=>` 与 `->` 里的 `>` 不算尖括号.
+    let depth = 0;
+    let j = i - 1;
+    for (; j >= 0; j--) {
+      const c = code[j];
+      if (c === '>' && (code[j - 1] === '=' || code[j - 1] === '-')) {
+        continue;
+      }
+      if (OPENER_OF[c] !== undefined) {
+        depth++;
+      } else if (c === '(' || c === '[' || c === '{' || c === '<') {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    if (j < 0 || code[j] !== opener) {
+      return i;
+    }
+    if (opener === '<' && !/[\w$]/.test(code[j - 1] ?? '')) {
+      return i;
+    }
+    i = j;
+  }
+  return i;
+}
+
+/**
+ * 函数签名末尾的返回类型注解(`): Promise<T>`, `) -> Vec<T>`)的起点, 即冒号或 `->` 所在位置;
+ * 不是返回类型注解时返回 null.
+ *
+ * 只认紧跟在 `)` 之后的冒号, 因此对象字面量的 `key: value` 与三元的 `: b` 都不会命中.
+ */
+export function returnTypeStart(code: string): number | null {
+  const trimmed = code.replace(/\s+$/, '');
+  const start = skipTypeBackward(trimmed, trimmed.length);
+  if (start === trimmed.length || trimmed.slice(start).trim() === '') {
+    return null;
+  }
+  const before = trimmed.slice(0, start).replace(/\s+$/, '');
+  if (before.endsWith('->')) {
+    return ARROW_RETURN_MODIFIERS.test(before.slice(0, -2)) ? before.length - 2 : null;
+  }
+  if (before.endsWith(':') && !before.endsWith('::')) {
+    return /\)\s*$/.test(before.slice(0, -1)) ? before.length - 1 : null;
+  }
+  return null;
+}
+
+/** 以泛型参数收尾的类型声明头: `class A<T>`, `class B extends Base<T>`, `impl<T> Foo<T>`. */
+function isGenericDeclarationHeader(code: string): boolean {
+  return (
+    code.endsWith('>') &&
+    /(^|[\s(;{,=])(class|interface|struct|impl|trait|enum|record|extends|implements)\b/.test(code) &&
+    skipTypeBackward(code, code.length) < code.length
+  );
 }
 
 /**

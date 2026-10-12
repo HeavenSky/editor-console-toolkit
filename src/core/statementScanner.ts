@@ -2,6 +2,7 @@ import {
   classifyAt,
   codeBeforeDelimiter,
   isContinuation,
+  returnTypeStart,
   scanDocument,
   stripLineComment
 } from './lexer';
@@ -87,7 +88,10 @@ function isRestrictedBlock(headerCode: string, keywords: readonly string[] | und
   if (keywords === undefined || keywords.length === 0) {
     return false;
   }
-  return new RegExp(`(^|[\\s(;{,=])(${keywords.join('|')})([^\\w$]|$)`).test(headerCode);
+  // 返回类型注解不参与匹配: `(): { type: string } {` 里的 `type` 是属性名, 不是 TS 的 `type` 声明.
+  const typeStart = returnTypeStart(headerCode);
+  const code = typeStart === null ? headerCode : headerCode.slice(0, typeStart);
+  return new RegExp(`(^|[\\s(;{,=])(${keywords.join('|')})([^\\w$]|$)`).test(code);
 }
 
 /**
