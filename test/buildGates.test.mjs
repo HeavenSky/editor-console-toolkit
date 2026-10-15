@@ -55,12 +55,6 @@ describe('check-extra 的目录白名单', () => {
     expect(hits.some((p) => p.includes('axios'))).toBe(true);
   });
 
-  it('在 themes 轮换域放行 setTimeout 与 onDidChangeConfiguration, 但仍报告 GLOBAL_FORBIDDEN', () => {
-    const hits = apiProblems().filter((p) => p.startsWith('src/themes/'));
-    expect(hits.some((p) => p.includes('setTimeout') || p.includes('onDidChangeConfiguration'))).toBe(false);
-    expect(hits.some((p) => p.includes('axios'))).toBe(true);
-  });
-
   it('console 命令域仍报告 readFileSync', () => {
     // 放行是按目录给的; console 域的"不读磁盘"承诺不能被 checksums 的放行顺带撬开。
     const hits = apiProblems().filter((p) => p.startsWith('src/commands/a.ts'));
@@ -73,11 +67,10 @@ describe('check-extra 的清单检查', () => {
     expect(checks(FIXTURE_ROOT)['默认快捷键与命令一一对应']()).toEqual([]);
   });
 
-  it('activationEvents 只放行 onStartupFinished', () => {
+  it('activationEvents 必须缺省', () => {
     expect(activationProblems({})).toEqual([]);
-    expect(activationProblems({ activationEvents: ['onStartupFinished'] })).toEqual([]);
-    expect(activationProblems({ activationEvents: ['*'] })).toHaveLength(1);
-    expect(activationProblems({ activationEvents: ['onStartupFinished', 'onLanguage:python'] })).toHaveLength(1);
+    expect(activationProblems({ activationEvents: ['onStartupFinished'] })).toHaveLength(1);
+    expect(activationProblems({ activationEvents: [] })).toHaveLength(1);
   });
 
   it('不再禁止 views / viewsContainers / menus', () => {

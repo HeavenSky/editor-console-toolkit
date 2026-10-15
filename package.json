@@ -2,7 +2,7 @@
   "name": "editor-console-toolkit",
   "displayName": "Editor Console Toolkit",
   "description": "%extension.description%",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "HeavenSky",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -36,10 +36,7 @@
     "netstat",
     "checksum",
     "product.json",
-    "unsupported",
-    "theme",
-    "theme rotation",
-    "dark mode"
+    "unsupported"
   ],
   "files": [
     "out/extension.js",
@@ -53,9 +50,6 @@
     "CHANGELOG.md"
   ],
   "main": "./out/extension.js",
-  "activationEvents": [
-    "onStartupFinished"
-  ],
   "contributes": {
     "commands": [
       {
@@ -118,11 +112,6 @@
         "command": "editorConsoleToolkit.checksums.restore",
         "title": "%command.checksums.restore%",
         "category": "%category.checksums%"
-      },
-      {
-        "command": "editorConsoleToolkit.themes.next",
-        "title": "%command.themes.next%",
-        "category": "%category.themes%"
       }
     ],
     "viewsContainers": {
@@ -231,82 +220,6 @@
           "type": "boolean",
           "default": false,
           "description": "%config.ports.includeUdp%"
-        },
-        "editorConsoleToolkit.themes.enabled": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "%config.themes.enabled%"
-        },
-        "editorConsoleToolkit.themes.interval": {
-          "type": "number",
-          "default": 60,
-          "minimum": 0,
-          "markdownDescription": "%config.themes.interval%"
-        },
-        "editorConsoleToolkit.themes.darkThemes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true,
-          "default": [
-            "Comfort One Dark",
-            "Comfort Ayu Dark",
-            "Comfort Sunlit Dark",
-            "Comfort GitHub Dark",
-            "Comfort Dracula Dark",
-            "Comfort Owl Dark",
-            "Comfort Moka Dark",
-            "Comfort Pale Dark"
-          ],
-          "markdownDescription": "%config.themes.darkThemes%"
-        },
-        "editorConsoleToolkit.themes.lightThemes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true,
-          "default": [
-            "Comfort One Light",
-            "Comfort Ayu Light",
-            "Comfort Sunlit Light",
-            "Comfort GitHub Light",
-            "Comfort Dracula Light",
-            "Comfort Owl Light",
-            "Comfort Moka Light",
-            "Comfort Pale Light"
-          ],
-          "markdownDescription": "%config.themes.lightThemes%"
-        },
-        "editorConsoleToolkit.themes.appearance": {
-          "type": "string",
-          "enum": [
-            "schedule",
-            "system",
-            "keep"
-          ],
-          "markdownEnumDescriptions": [
-            "%config.themes.appearance.schedule%",
-            "%config.themes.appearance.system%",
-            "%config.themes.appearance.keep%"
-          ],
-          "default": "schedule",
-          "markdownDescription": "%config.themes.appearance%"
-        },
-        "editorConsoleToolkit.themes.lightTime": {
-          "type": "string",
-          "default": "09:00",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-          "patternErrorMessage": "%config.themes.timePattern%",
-          "markdownDescription": "%config.themes.lightTime%"
-        },
-        "editorConsoleToolkit.themes.darkTime": {
-          "type": "string",
-          "default": "18:00",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-          "patternErrorMessage": "%config.themes.timePattern%",
-          "markdownDescription": "%config.themes.darkTime%"
         }
       }
     }

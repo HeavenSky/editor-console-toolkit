@@ -8,14 +8,13 @@
 
 > 市场页只渲染英文版 README, 不随访问者的显示语言切换; 插件界面本身是双语的.
 
-四件日常琐事, 一个插件, 零运行时依赖.
+三件日常琐事, 一个插件, 零运行时依赖.
 
 | | 做什么 | 在哪用 |
 | --- | --- | --- |
 | **控制台工具箱** (Console Toolkit) | 为光标处的表达式插入调试日志, 再一键把它 (或整个文件的日志) 关掉. 支持 15 种语言. | 命令面板, `Alt+L` |
 | **端口工具箱** (Port Toolkit) | 查看哪些进程占着本机端口, 按启动位置区分它们, 并一次终止多个. | 活动栏 |
 | **校验和工具箱** (Checksum Toolkit) | 改过编辑器自身的文件之后, 消掉"安装似乎已损坏"的警告; 想撤回时也能还原. | 命令面板 |
-| **主题工具箱** (Theme Toolkit) | 在你指定的主题列表之间轮换颜色主题, 按时间段或系统外观切换深浅. | 设置, 命令面板 |
 
 界面提供英文与简体中文, 跟随 VS Code 的显示语言.
 
@@ -368,51 +367,12 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 
 ---
 
-## 主题工具箱 (Theme Toolkit)
-
-在你指定的主题列表之间轮换颜色主题 — 例如每到整点换一个 — 并按时间段或操作系统外观在深色列表与浅色列表之间切换. 列表里可以填 **任何已安装的主题**; 默认是 [Editor Comfort Theme](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-comfort-theme) 的 16 个主题, 当前主题不在列表里时什么都不做.
-
-![主题工具箱的配置](./media/screenshots/theme-settings.png)
-
-### 命令
-
-| 命令 | ID |
-| --- | --- |
-| 下一个主题 (Next Theme) | `editorConsoleToolkit.themes.next` |
-
-立即换到同类的下一个已安装主题. 没有默认快捷键.
-
-### 配置
-
-| 配置项 | 类型 | 默认值 | 作用 |
-| --- | --- | --- | --- |
-| `editorConsoleToolkit.themes.enabled` | `boolean` | `true` | 开启或关闭轮换. |
-| `editorConsoleToolkit.themes.interval` | `number` | `60` | 轮换间隔(分钟), 按本地时钟对齐. 小于 `30` 表示不轮换, 只切换深浅; 大于 `20160`(两周)按两周计. |
-| `editorConsoleToolkit.themes.darkThemes` | `string[]` | Comfort 的 8 个深色主题 | 参与轮换的深色主题, 按顺序轮换, 填 **首选项: 颜色主题** 里显示的名字. |
-| `editorConsoleToolkit.themes.lightThemes` | `string[]` | Comfort 的 8 个浅色主题 | 参与轮换的浅色主题, 按顺序轮换. |
-| `editorConsoleToolkit.themes.appearance` | `string` | `schedule` | `schedule` 按 `lightTime` / `darkTime` 切换深浅; `system` 跟随系统外观(macOS, Windows, 以及通过 XDG desktop portal, GNOME 或 KDE 设置识别的 Linux), 每 10 分钟与窗口重新获得焦点时重新检查; `keep` 保持当前深浅. |
-| `editorConsoleToolkit.themes.lightTime` | `string` | `09:00` | `schedule` 时切到浅色列表的时刻. |
-| `editorConsoleToolkit.themes.darkTime` | `string` | `18:00` | `schedule` 时切到深色列表的时刻. |
-
-### 它是怎么决定的
-
-- **只管列表里的主题.** 换成两个列表都没有的主题(任何插件或 VS Code 自带的) 会暂停轮换, 设置不变; 再换回列表里的主题就从它接着轮. 把当前主题从列表里删掉效果相同.
-- **跳过没安装的主题.** 写入主题前先检查是否已安装, 没装就取列表里下一个已安装的; 要切去的列表一个都没装时保持当前深浅, 在当前列表里照常轮换, 装上主题后自动切过去 — 所以只填深色列表时白天也在深色主题之间轮换.
-- **启动不闪.** 加载时当前主题的深浅符合要求就保留, 视为本时段的主题并从它接着轮; 只有深浅不符(例如早上仍是深色)才立即切换.
-- **手动选的列表主题** 保留到下一个切换时间点, 之后从它的下一个接着轮.
-- **多窗口每个时段只换一次.** 各窗口按时钟算出同一个主题, 只有获得焦点的窗口计时; 后台窗口休眠, 重新获得焦点时补判.
-- **工作区设置优先.** 轮换只写用户级 `workbench.colorTheme`. 主题由工作区设置(`.vscode/settings.json` 或 `.code-workspace` 文件) 决定的窗口仍显示工作区主题, 但获得焦点时照常驱动用户级主题轮换; 修改工作区主题不算手动选择, **下一个主题** 在该窗口不生效. `window.autoDetectColorScheme` 会覆盖 `workbench.colorTheme`, 使用本功能需将其关闭.
-- **远程窗口不参与**, 因为那里的时钟, 时区与系统外观属于远程机器; 由本机窗口负责切换.
-
----
-
 ## 隐私与开销
 
 - **无遥测, 无网络访问.** 关于你和你代码的任何信息都不会离开本机.
 - **无运行时依赖.** 插件以单个打包文件发布.
 - **控制台工具箱是纯命令式的** — 没有监听器, 没有计时器, 没有状态栏项. 在你执行命令之前它什么都不做.
 - **端口工具箱只在你看着它的时候工作.** 扫描计时器仅在其视图可见期间存在.
-- **主题工具箱只在获得焦点的窗口里挂一个定时器.** 最多每 5 分钟醒一次, 只在 `appearance` 为 `system` 时, 于切换时间点, 每 10 分钟, 窗口重新获得焦点(15 秒内最多一次)或修改设置时读取系统外观; 后台窗口与远程窗口什么都不做.
 - **校验和工具箱只在你执行它的时候碰磁盘.** 没有启动扫描, 不提权, 除了编辑器自身的安装目录与你的临时目录之外不写任何地方.
 
 这些不只是口头承诺: 一旦 console 那一侧的代码里出现计时器, 监听器或常驻 UI 的 API, 构建就会失败.
@@ -439,8 +399,6 @@ macOS, Linux 与 Windows, 以及安装结构相同的 VS Code 兼容编辑器 (C
 - **再往后** — SQL. 各方言没有统一的日志构造, 因此需要一个显式的方言配置, 而不是有风险的猜测.
 
 端口工具箱与校验和工具箱的下一步都是在真机上验证 Linux 与 Windows — 端口解析器与"安装目录不可写"这条路径都已实现且有测试覆盖, 但只在 macOS 上真跑过.
-
-主题工具箱在 Linux 上的系统外观检测 (XDG desktop portal, GNOME `gsettings`, KDE `kreadconfig6` / `kreadconfig5`) 同样有测试覆盖, 但还没在真实的 Linux 桌面上跑过; 这项验证等有需求时再做. 检测失败时 `system` 按 `keep` 处理, 轮换照常进行.
 
 ## 开发
 

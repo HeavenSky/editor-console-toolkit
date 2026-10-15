@@ -2,7 +2,6 @@
 // 用法: node scripts/shoot.mjs [输出目录, 默认 artifacts/shots] [--readme] [场景名过滤...]
 //   console-log      Console Toolkit: 插入的日志与注释掉的日志
 //   ports            Port Toolkit: 工作区里启动的两个服务, 展开一行看详情
-//   theme-settings   Theme Toolkit: 设置界面里的轮换设置
 //   checksums        Checksum Toolkit: 命令面板里的两个命令
 import fs from 'node:fs';
 import path from 'node:path';
@@ -87,13 +86,6 @@ try {
     const box = await page.locator('.part.sidebar').boundingBox();
     await h.shot('ports', { clip: { x: box.x, y: box.y, width: box.width, height: 330 } });
     await h.command('View: Close Primary Side Bar', 500);
-  }
-
-  if (h.want('theme-settings')) {
-    await h.command('Preferences: Open User Settings', 2500);
-    await h.type('editorConsoleToolkit.themes', 2500);
-    await h.shot('theme-settings', { clip: page.locator('.modal-editor-part'), pad: 0 });
-    await h.reset();
   }
 
   if (h.want('checksums')) {

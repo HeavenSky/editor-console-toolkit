@@ -1,5 +1,12 @@
 # Change Log
 
+## v0.0.6 2026-10-15 Theme Toolkit removed
+
+### Removed
+
+- **Theme Toolkit** is gone: the `editorConsoleToolkit.themes.*` settings and the **Next Theme** command no longer exist, and the extension no longer switches your color theme. Any of those settings left in your `settings.json` are now unused and safe to delete. To follow the OS appearance, use VS Code's own `window.autoDetectColorScheme`.
+- The extension no longer activates on startup; it activates only when you run a command or open the Port Toolkit view.
+
 ## v0.0.5 2026-10-12 Theme Toolkit
 
 Adds a fourth feature area: **Theme Toolkit**, for rotating color themes on a schedule.
