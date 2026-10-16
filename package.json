@@ -2,7 +2,7 @@
   "name": "editor-console-toolkit",
   "displayName": "Editor Console Toolkit",
   "description": "%extension.description%",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "HeavenSky",
   "author": {
     "name": "calla",

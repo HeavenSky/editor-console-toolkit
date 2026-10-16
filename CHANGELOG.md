@@ -1,5 +1,11 @@
 # Change Log
 
+## v0.0.7 2026-10-16 Rewritten docs
+
+### Changed
+
+- Docs: the README is now a short overview with a screenshot of each toolkit; full usage, settings and troubleshooting moved to [the docs pages](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/README.md), and the Chinese pages now live under `zh/`.
+
 ## v0.0.6 2026-10-15 Theme Toolkit removed
 
 ### Removed
