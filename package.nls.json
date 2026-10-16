@@ -1,5 +1,5 @@
 {
-  "extension.description": "Insert and safely toggle debug console statements across multiple programming languages, manage the processes listening on your local ports, and fix the editor checksum warning after patching its core files.",
+  "extension.description": "Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, and silence the editor's \"installation appears to be corrupt\" warning.",
   "category": "Console Toolkit",
   "command.insertConsoleLog": "Insert Console Log",
   "command.toggleConsoleLog": "Toggle Console Log",
@@ -14,7 +14,7 @@
   "command.ports.clearSearch": "Clear Port Search",
   "view.ports.container": "Port Toolkit",
   "view.ports.name": "Port Toolkit",
-  "config.ports.refreshInterval": "How often the Listening Processes view rescans, in milliseconds, while the view is visible. Set to 0 to refresh only on demand.",
+  "config.ports.refreshInterval": "How often the Port Toolkit view rescans, in milliseconds, while the view is visible. Set to 0 to refresh only on demand.",
   "config.ports.killTimeout": "How long to wait after SIGTERM before escalating to SIGKILL, in milliseconds.",
   "config.ports.hideSystemProcesses": "Hide processes that live in system directories or only listen on ports at or below the system port maximum.",
   "config.ports.systemPortMax": "Highest port number treated as a system port. A process is only hidden when every port it listens on is at or below this value.",

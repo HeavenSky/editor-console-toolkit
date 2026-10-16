@@ -1,5 +1,5 @@
 {
-  "extension.description": "为多种编程语言插入并安全切换调试输出语句, 管理占用本机端口的进程, 并在改动编辑器核心文件后修复校验和警告.",
+  "extension.description": "一个快捷键给光标处的表达式加上调试日志, 提交前一条命令全部关掉; 停掉占着开发端口的进程; 消掉改过编辑器文件后出现的 \"安装似乎已损坏\" 警告.",
   "category": "控制台工具箱",
   "command.insertConsoleLog": "插入 Console 日志",
   "command.toggleConsoleLog": "切换 Console 日志",

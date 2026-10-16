@@ -5,6 +5,9 @@
 ### Removed
 
 - **Theme Toolkit** is gone: the `editorConsoleToolkit.themes.*` settings and the **Next Theme** command no longer exist, and the extension no longer switches your color theme. Any of those settings left in your `settings.json` are now unused and safe to delete. To follow the OS appearance, use VS Code's own `window.autoDetectColorScheme`.
+
+### Changed
+
 - The extension no longer activates on startup; it activates only when you run a command or open the Port Toolkit view.
 
 ## v0.0.5 2026-10-12 Theme Toolkit
@@ -33,10 +36,10 @@ Adds a third feature area: **Checksum Toolkit**, for silencing the editor's "ins
 
 ### Added
 
-- **Fix Checksums** (`editorConsoleToolkit.checksums.apply`): recomputes the SHA-256 of every file listed under `checksums` in the running editor's `product.json` and writes back only the entries that actually differ. Entries whose file is missing from disk are skipped and reported instead of aborting the run; when nothing differs, nothing is written.
+- **Fix Checksums** (`editorConsoleToolkit.checksums.apply`): rewrites only the checksums in the running editor's `product.json` that no longer match the files on disk ([how to use it](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/checksums.md#fix-the-checksums)).
 - **Restore Checksums** (`editorConsoleToolkit.checksums.restore`): writes the backup back and only then deletes it, so a failure halfway through never leaves you without either file.
-- A backup is **copied** — not moved — to `product.json.ect-orig.<version>` beside the original before the first write, and is not overwritten on later runs. New content goes to a temporary file in the same folder and is renamed over `product.json`, so an interrupted run cannot produce a truncated or missing `product.json`.
-- **No privilege elevation, ever.** Where the installation is not writable — typically Windows and Linux — the fixed `product.json` is staged in your temporary folder and the notification hands you the single equivalent command, with a **Copy command** button that puts it on the clipboard.
+- A backup is **copied** to `product.json.ect-orig.<version>` before the first write, and an interrupted run cannot leave a truncated or missing `product.json` ([what changes on disk](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/checksums.md#know-what-is-changed-on-disk)).
+- **No privilege elevation, ever.** Where the installation is not writable — typically Windows and Linux — the notification hands you the single command to run yourself ([details](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/checksums.md#when-the-installation-is-not-writable)).
 - Backups left behind by *other* editor versions are cleaned up when you run either command. Only files this extension wrote itself (`product.json.ect-orig.*`) are ever removed.
 - Both commands refuse to run, with the reason shown, when the extension host is not the machine holding the editor: Remote (SSH, WSL, container) windows, the web, or any case where the editor cannot report its installation folder.
 - 36 tests covering the checksum algorithm against fixed vectors, and the apply/restore ordering, permission-denied and partial-failure paths against an in-memory filesystem — 344 tests in total.
@@ -58,9 +61,9 @@ Reworks where an inserted log lands, and turns the ports view's search into a pe
 
 ### Added
 
-- **Logs now go inside the block they belong to.** With the cursor on a line that opens a block — a function signature, an `if` / `for` head, a callback body — the log is inserted as that block's **first statement**, indented like the rest of the block, instead of after the whole construct. This is the placement you want when you are logging a parameter.
+- **Logs now go inside the block they belong to.** With the cursor on a function signature, an `if` / `for` head or a callback body, the log becomes the block's first statement instead of landing after the whole construct ([placement rules](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/console-logs.md#know-where-the-log-lands)).
 - Blocks that cannot hold statements (`switch`, `class`, Rust's `match` and `impl`) put the log on the line **before** the statement, where the value being logged has already been evaluated.
-- **A search row is always present** as the first row of the Port Toolkit view. Click it to type; the list narrows as you type, **Enter** keeps the filter and **Esc** restores what was there before you opened the box. While a filter is active the row shows the term and a `2 of 7 shown` match count, and carries a ✕ to clear it; with no filter there is nothing to clear, so the ✕ is absent.
+- **A search row is always present** as the first row of the Port Toolkit view, showing the term, a `2 of 7 shown` match count and a ✕ to clear it while a filter is active ([how search works](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/ports.md#search-the-list)).
 - 13 regression cases covering insertion placement across the supported languages, plus a lexer test suite — 305 tests in total.
 
 ### Changed
@@ -90,7 +93,7 @@ Adds a second feature area: **Port Toolkit**, for seeing which processes hold yo
 
 - **Port Toolkit view** in the Activity Bar, listing every process that is listening on a local port. Rows are **one per process**, not one per port, so a process holding several ports takes a single row and the number of rows you check always equals the number of processes that get terminated.
 - Source information for telling processes apart: PID, PPID, owner, uptime, working directory, every listening endpoint, and the full untruncated command line. A `this workspace` marker appears when the process was started from inside one of your open workspace folders — which is what distinguishes three concurrent `node` dev servers from each other.
-- **Batch termination** via native checkboxes: check any number of rows, then run `Port Toolkit: Kill Checked Processes`. A modal confirmation lists exactly what will be terminated, and a summary afterwards reports how many actually went down. Checked rows survive the automatic refresh.
+- **Batch termination** via native checkboxes: check any number of rows, then run `Port Toolkit: Kill Checked Processes` ([steps](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/ports.md#terminate-processes)).
 - `SIGTERM` first, escalating to `SIGKILL` only after `editorConsoleToolkit.ports.killTimeout`, so a dev server gets the chance to close its sockets. Child processes are never touched (`taskkill` is invoked without `/T` on Windows).
 - The command line is re-checked immediately before any signal is sent. If a process exited and its PID was reused after you checked the row, that row is skipped and reported as skipped instead of being terminated blindly.
 - **The editor can never be terminated.** The parent chain from the extension host up to the editor's main process is derived from the live process tree at startup; every process on it is shown with a lock icon, has no checkbox and no terminate action. Being derived from the process tree rather than a list of names, this holds for VS Code, Cursor, Windsurf and other derivatives.
