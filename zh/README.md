@@ -54,7 +54,7 @@ console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 
 - [使用文档](./docs/README.md)：完整用法、设置、故障排查与隐私说明。
 - 命令与设置清单见插件市场页的 Feature Contributions 标签。
-- [更新日志](../CHANGELOG.md)（英文）：各版本的变化。
+- [更新日志](./CHANGELOG.md)：各版本的变化。
 
 ## 许可证
 
