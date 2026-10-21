@@ -15,7 +15,7 @@
 ```js
 // 执行前
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 
 // 执行一次「切换全部 Console 日志」之后
 const user = getUser();
@@ -38,11 +38,11 @@ const user = getUser();
 
 日志插在值已经存在的地方，具体位置由光标所在的行决定：
 
-| 光标所在 | 日志位置 |
-| --- | --- |
-| 开启代码块的行：函数签名、`if` / `for` 条件行、回调函数体 | 块内第一条语句，缩进与块内其他语句一致 |
+| 光标所在                                                             | 日志位置                               |
+| -------------------------------------------------------------------- | -------------------------------------- |
+| 开启代码块的行：函数签名、`if` / `for` 条件行、回调函数体            | 块内第一条语句，缩进与块内其他语句一致 |
 | 开启不能直接放语句的块：`switch`、`class`、Rust 的 `match` 或 `impl` | 该语句的上一行，此时要记录的值已经求出 |
-| 其他情况 | 所在语句之后，不论这条语句跨了几行 |
+| 其他情况                                                             | 所在语句之后，不论这条语句跨了几行     |
 
 语法有歧义时（例如单独一个 `{`，既可能开启代码块，也可能是对象字面量），日志会退到整条语句之后：位置可能比你想的靠外，但不会破坏语法。位置不满意，撤销一次即可。
 
@@ -50,20 +50,20 @@ const user = getUser();
 
 12 个适配器覆盖 15 种语言 ID。插件从不添加 import，所以 Java 和 C# 使用全限定名。
 
-| 语言 | 语言 ID | 生成的语句 |
-| --- | --- | --- |
-| JavaScript / JSX / TypeScript / TSX | `javascript`, `javascriptreact`, `typescript`, `typescriptreact` | `console.log('🎯🎯🎯 [DEBUG] user:', user);` |
-| Python | `python` | `print('🎯🎯🎯 [DEBUG] user:', user)` |
-| Java | `java` | `System.out.println("🎯🎯🎯 [DEBUG] user: " + String.valueOf(user));` |
-| Kotlin | `kotlin` | `println("🎯🎯🎯 [DEBUG] user: ${user}")` |
-| C# | `csharp` | `System.Console.WriteLine("🎯🎯🎯 [DEBUG] user: {0}", user);` |
-| Lua | `lua` | `print("🎯🎯🎯 [DEBUG] user:", user)` |
-| Ruby | `ruby` | `puts "🎯🎯🎯 [DEBUG] user: #{(user).inspect}"` |
-| PHP | `php` | `var_dump('🎯🎯🎯 [DEBUG] user:', $user);` |
-| Swift | `swift` | `print("🎯🎯🎯 [DEBUG] user:", user)` |
-| Dart | `dart` | `print('🎯🎯🎯 [DEBUG] user: ${user}');` |
-| Rust | `rust` | `println!("🎯🎯🎯 [DEBUG] user: {:?}", user);` |
-| Elixir | `elixir` | `IO.inspect(user, label: "🎯🎯🎯 [DEBUG] user")` |
+| 语言                                | 语言 ID                                                          | 生成的语句                                                            |
+| ----------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| JavaScript / JSX / TypeScript / TSX | `javascript`, `javascriptreact`, `typescript`, `typescriptreact` | `console.log('🎯🎯🎯 [DEBUG] user:', user);`                          |
+| Python                              | `python`                                                         | `print('🎯🎯🎯 [DEBUG] user:', user)`                                 |
+| Java                                | `java`                                                           | `System.out.println("🎯🎯🎯 [DEBUG] user: " + String.valueOf(user));` |
+| Kotlin                              | `kotlin`                                                         | `println("🎯🎯🎯 [DEBUG] user: ${user}")`                             |
+| C#                                  | `csharp`                                                         | `System.Console.WriteLine("🎯🎯🎯 [DEBUG] user: {0}", user);`         |
+| Lua                                 | `lua`                                                            | `print("🎯🎯🎯 [DEBUG] user:", user)`                                 |
+| Ruby                                | `ruby`                                                           | `puts "🎯🎯🎯 [DEBUG] user: #{(user).inspect}"`                       |
+| PHP                                 | `php`                                                            | `var_dump('🎯🎯🎯 [DEBUG] user:', $user);`                            |
+| Swift                               | `swift`                                                          | `print("🎯🎯🎯 [DEBUG] user:", user)`                                 |
+| Dart                                | `dart`                                                           | `print('🎯🎯🎯 [DEBUG] user: ${user}');`                              |
+| Rust                                | `rust`                                                           | `println!("🎯🎯🎯 [DEBUG] user: {:?}", user);`                        |
+| Elixir                              | `elixir`                                                         | `IO.inspect(user, label: "🎯🎯🎯 [DEBUG] user")`                      |
 
 各语言的限制：
 
@@ -96,12 +96,7 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 - 允许设为空，此时输出 `user:` 而不是 `🎯🎯🎯 [DEBUG] user:`。
 
 ```json
-{
-  "editorConsoleToolkit.prefix": "[debug]",
-  "[python]": {
-    "editorConsoleToolkit.prefix": "[py]"
-  }
-}
+{ "editorConsoleToolkit.prefix": "[debug]", "[python]": { "editorConsoleToolkit.prefix": "[py]" } }
 ```
 
 ## 绑定或修改快捷键
@@ -110,20 +105,17 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 ```json
 [
-  {
-    "key": "ctrl+alt+shift+l",
-    "command": "editorConsoleToolkit.toggleConsoleLog",
-    "when": "editorTextFocus && !editorReadonly"
-  },
-  {
-    "key": "ctrl+alt+shift+k",
-    "command": "editorConsoleToolkit.toggleAllConsoleLogs",
-    "when": "editorTextFocus && !editorReadonly"
-  },
-  {
-    "key": "alt+l",
-    "command": "-editorConsoleToolkit.insertConsoleLog"
-  }
+	{
+		"key": "ctrl+alt+shift+l",
+		"command": "editorConsoleToolkit.toggleConsoleLog",
+		"when": "editorTextFocus && !editorReadonly"
+	},
+	{
+		"key": "ctrl+alt+shift+k",
+		"command": "editorConsoleToolkit.toggleAllConsoleLogs",
+		"when": "editorTextFocus && !editorReadonly"
+	},
+	{ "key": "alt+l", "command": "-editorConsoleToolkit.insertConsoleLog" }
 ]
 ```
 

@@ -1,5 +1,5 @@
-import { runConsoleLogCommand } from './runner';
+import { runConsoleLogCommand } from "./runner";
 
 export function toggleAllConsoleLogs(): Promise<void> {
-  return runConsoleLogCommand('toggle-all');
+	return runConsoleLogCommand("toggle-all");
 }

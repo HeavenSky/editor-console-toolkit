@@ -1,5 +1,5 @@
-import { runConsoleLogCommand } from './runner';
+import { runConsoleLogCommand } from "./runner";
 
 export function insertConsoleLog(): Promise<void> {
-  return runConsoleLogCommand('insert');
+	return runConsoleLogCommand("insert");
 }

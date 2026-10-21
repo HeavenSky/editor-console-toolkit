@@ -28,14 +28,14 @@ The title bar holds Kill Checked Processes (trash icon), Toggle System Processes
 
 The `this workspace` marker means the process was started from inside one of your open workspace folders; when several `node` processes are listening, it tells you which one is yours. Expand or hover a row for the rest:
 
-| Field | Meaning |
-| --- | --- |
-| PID, PPID | process and parent process IDs |
-| User | the process owner |
-| Uptime | how long it has been running |
+| Field             | Meaning                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| PID, PPID         | process and parent process IDs                                   |
+| User              | the process owner                                                |
+| Uptime            | how long it has been running                                     |
 | Working directory | where it was started, shortened to `~` under your home directory |
-| Listening on | every endpoint, with protocol and bind address |
-| Command | the full command line, never truncated |
+| Listening on      | every endpoint, with protocol and bind address                   |
+| Command           | the full command line, never truncated                           |
 
 ## Search the list
 
@@ -72,13 +72,13 @@ Each process is first asked to shut down (`SIGTERM`; `taskkill` on Windows) and 
 
 The view rescans only while it is visible: switch to another Activity Bar icon and the timer stops. A failed scan shows one error row in the view instead of a notification on every cycle.
 
-| Setting | Default | Accepted values and meaning |
-| --- | --- | --- |
-| `editorConsoleToolkit.ports.refreshInterval` | `5000` | 0–600000 ms between scans while visible; `0` refreshes only on demand |
-| `editorConsoleToolkit.ports.killTimeout` | `3000` | 0–60000 ms to wait after the graceful shutdown request (`SIGTERM`) before force-killing |
-| `editorConsoleToolkit.ports.hideSystemProcesses` | `true` | hide system processes (see below); Toggle System Processes flips it in your user settings |
-| `editorConsoleToolkit.ports.systemPortMax` | `1024` | 0–65535; highest port treated as a system port |
-| `editorConsoleToolkit.ports.includeUdp` | `false` | also list UDP endpoints, not only TCP listeners |
+| Setting                                          | Default | Accepted values and meaning                                                               |
+| ------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------- |
+| `editorConsoleToolkit.ports.refreshInterval`     | `5000`  | 0–600000 ms between scans while visible; `0` refreshes only on demand                     |
+| `editorConsoleToolkit.ports.killTimeout`         | `3000`  | 0–60000 ms to wait after the graceful shutdown request (`SIGTERM`) before force-killing   |
+| `editorConsoleToolkit.ports.hideSystemProcesses` | `true`  | hide system processes (see below); Toggle System Processes flips it in your user settings |
+| `editorConsoleToolkit.ports.systemPortMax`       | `1024`  | 0–65535; highest port treated as a system port                                            |
+| `editorConsoleToolkit.ports.includeUdp`          | `false` | also list UDP endpoints, not only TCP listeners                                           |
 
 A process counts as a system process when it was started from a system directory, or when every port it listens on is at or below `systemPortMax`. One port above the threshold keeps it visible, so a system process squatting on `8080` is never hidden silently.
 

@@ -1,4 +1,4 @@
-import type { DocumentSnapshot } from './types';
+import type { DocumentSnapshot } from "./types";
 
 /**
  * 词法状态层.
@@ -16,43 +16,71 @@ import type { DocumentSnapshot } from './types';
  * 花括号必须区分块与字面量: 块不需要在语句结束前闭合(日志可以落在块内), 而对象字面量必须
  * 闭合(否则日志会插到字面量中间, 产生语法错误).
  */
-export type DelimiterKind = 'paren' | 'bracket' | 'brace-block' | 'brace-literal';
+export type DelimiterKind = "paren" | "bracket" | "brace-block" | "brace-literal";
 
-export type OpenDelimiter = {
-  kind: DelimiterKind;
-  line: number;
-  column: number;
-};
+export type OpenDelimiter = { kind: DelimiterKind; line: number; column: number };
 
 export type LexState = {
-  stack: readonly OpenDelimiter[];
-  /** 未闭合的字符串定界符, 否则 null. */
-  openQuote: string | null;
-  inBlockComment: boolean;
+	stack: readonly OpenDelimiter[];
+	/** 未闭合的字符串定界符, 否则 null. */
+	openQuote: string | null;
+	inBlockComment: boolean;
 };
 
 export type LexConfig = {
-  lineComment: string;
-  /** 字符串定界符; 可以是多字符, 例如 Python 的 `'''`. */
-  stringDelimiters: readonly string[];
-  blockComment?: { open: string; close: string };
+	lineComment: string;
+	/** 字符串定界符; 可以是多字符, 例如 Python 的 `'''`. */
+	stringDelimiters: readonly string[];
+	blockComment?: { open: string; close: string };
 };
 
 /** 行尾出现这些符号时, 紧随的 `{` 是块: 头部的收尾括号, 箭头函数体, do 块. */
-const BLOCK_TAIL_SYMBOLS = [')', '=>', '->'] as const;
+const BLOCK_TAIL_SYMBOLS = [")", "=>", "->"] as const;
 
 /** 行尾是这些词时, 紧随的 `{` 是块. */
-const BLOCK_TAIL_WORDS = ['else', 'do', 'try', 'finally', 'catch', 'then'] as const;
+const BLOCK_TAIL_WORDS = ["else", "do", "try", "finally", "catch", "then"] as const;
 
 /** 行尾出现这些符号时, 紧随的 `{` 是对象字面量: 赋值, 实参, 数组元素, 键值对, 运算符右侧. */
-const LITERAL_TAIL_SYMBOLS = ['==', '=>', '=', '(', ',', ':', '[', '{', '&&', '||', '??', '?', '+'] as const;
+const LITERAL_TAIL_SYMBOLS = [
+	"==",
+	"=>",
+	"=",
+	"(",
+	",",
+	":",
+	"[",
+	"{",
+	"&&",
+	"||",
+	"??",
+	"?",
+	"+",
+] as const;
 
 /** 行尾是这些词时, 紧随的 `{` 是字面量. */
-const LITERAL_TAIL_WORDS = ['return', 'yield', 'in', 'of', 'typeof', 'new', 'await'] as const;
+const LITERAL_TAIL_WORDS = ["return", "yield", "in", "of", "typeof", "new", "await"] as const;
 
 /** 行尾是这些符号时, 语句在下一行继续. `:` 刻意不在其中 —— Python 的 `:` 是块开始. */
 const TRAILING_CONTINUATIONS = [
-  '\\', '&&', '||', '??', '=>', '->', '==', '=', '+', '-', '*', '/', '%', '|', '&', '^', ',', '?', '.',
+	"\\",
+	"&&",
+	"||",
+	"??",
+	"=>",
+	"->",
+	"==",
+	"=",
+	"+",
+	"-",
+	"*",
+	"/",
+	"%",
+	"|",
+	"&",
+	"^",
+	",",
+	"?",
+	".",
 ] as const;
 
 /**
@@ -62,14 +90,30 @@ const TRAILING_CONTINUATIONS = [
  * `if (x)` 与它下一行的 `{` 必须算同一条语句, 否则日志会插在两者之间, 变成 if 的唯一分支体.
  */
 const LEADING_CONTINUATIONS = [
-  '&&', '||', '??', '=>', '->', '?', ':', '.', '+', '*', '/', '%', '|', '&', '^', ',', '{',
+	"&&",
+	"||",
+	"??",
+	"=>",
+	"->",
+	"?",
+	":",
+	".",
+	"+",
+	"*",
+	"/",
+	"%",
+	"|",
+	"&",
+	"^",
+	",",
+	"{",
 ] as const;
 
 const WORD_TAIL = /([A-Za-z_$][\w$]*)$/;
 
 /** 按长度降序匹配, 保证 `=>` 不被 `=` 抢走, `'''` 不被 `'` 抢走. */
 const longestFirst = (values: readonly string[]): string[] =>
-  [...values].sort((a, b) => b.length - a.length);
+	[...values].sort((a, b) => b.length - a.length);
 
 /**
  * 判定紧跟在给定代码之后的 `{` 是块还是字面量; 判不出来返回 null.
@@ -77,35 +121,36 @@ const longestFirst = (values: readonly string[]): string[] =>
  * 调用方对 null 一律按字面量处理(即"必须闭合"): 那样日志会落到整条语句之后, 位置偏外但
  * 语法一定合法; 反过来把字面量当成块会直接写出坏代码.
  */
-export function classifyBrace(codeBeforeBrace: string): 'block' | 'literal' | null {
-  const code = codeBeforeBrace.replace(/\s+$/, '');
-  if (code === '') {
-    return null;
-  }
+export function classifyBrace(codeBeforeBrace: string): "block" | "literal" | null {
+	const code = codeBeforeBrace.replace(/\s+$/, "");
+	if (code === "") {
+		return null;
+	}
 
-  const word = WORD_TAIL.exec(code)?.[1];
-  if (word !== undefined) {
-    if (BLOCK_TAIL_WORDS.includes(word as (typeof BLOCK_TAIL_WORDS)[number])) return 'block';
-    if (LITERAL_TAIL_WORDS.includes(word as (typeof LITERAL_TAIL_WORDS)[number])) return 'literal';
-    // 裸标识符收尾: `class A {`, `impl Foo {`, Rust/Go 的 `if x {`. 都是块.
-    return 'block';
-  }
+	const word = WORD_TAIL.exec(code)?.[1];
+	if (word !== undefined) {
+		if (BLOCK_TAIL_WORDS.includes(word as (typeof BLOCK_TAIL_WORDS)[number])) return "block";
+		if (LITERAL_TAIL_WORDS.includes(word as (typeof LITERAL_TAIL_WORDS)[number]))
+			return "literal";
+		// 裸标识符收尾: `class A {`, `impl Foo {`, Rust/Go 的 `if x {`. 都是块.
+		return "block";
+	}
 
-  // 返回类型注解要先于符号表判定: Kotlin/Swift 的 `): Int? {` 以 `?` 收尾, 会被三元的 `?` 抢走.
-  if (returnTypeStart(code) !== null || isGenericDeclarationHeader(code)) {
-    return 'block';
-  }
+	// 返回类型注解要先于符号表判定: Kotlin/Swift 的 `): Int? {` 以 `?` 收尾, 会被三元的 `?` 抢走.
+	if (returnTypeStart(code) !== null || isGenericDeclarationHeader(code)) {
+		return "block";
+	}
 
-  for (const symbol of longestFirst([...LITERAL_TAIL_SYMBOLS, ...BLOCK_TAIL_SYMBOLS])) {
-    if (!code.endsWith(symbol)) continue;
-    // `=>` 同时在两张表里, 块的语义优先: `x => {` 是函数体.
-    if ((BLOCK_TAIL_SYMBOLS as readonly string[]).includes(symbol)) return 'block';
-    return 'literal';
-  }
-  return null;
+	for (const symbol of longestFirst([...LITERAL_TAIL_SYMBOLS, ...BLOCK_TAIL_SYMBOLS])) {
+		if (!code.endsWith(symbol)) continue;
+		// `=>` 同时在两张表里, 块的语义优先: `x => {` 是函数体.
+		if ((BLOCK_TAIL_SYMBOLS as readonly string[]).includes(symbol)) return "block";
+		return "literal";
+	}
+	return null;
 }
 
-const OPENER_OF: Readonly<Record<string, string>> = { '>': '<', ']': '[', '}': '{', ')': '(' };
+const OPENER_OF: Readonly<Record<string, string>> = { ">": "<", "]": "[", "}": "{", ")": "(" };
 
 /** `->` 之前允许出现的修饰词: Swift 的 `throws -> T`, `async throws -> T`. */
 const ARROW_RETURN_MODIFIERS = /(\)|\b(?:throws|rethrows|async))\s*$/;
@@ -118,48 +163,48 @@ const ARROW_RETURN_MODIFIERS = /(\)|\b(?:throws|rethrows|async))\s*$/;
  * 紧贴在标识符之后(`Promise<T>`), 以免把 JSX 的 `: <List>` 也当成类型.
  */
 function skipTypeBackward(code: string, end: number): number {
-  let i = end;
-  while (i > 0) {
-    const ch = code[i - 1];
-    if (/[\w$\s.|&?,]/.test(ch)) {
-      i--;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      // 字符串字面量类型 `"a" | "b"`; 不处理转义, 类型里几乎不会出现.
-      const open = code.lastIndexOf(ch, i - 2);
-      if (open === -1) return i;
-      i = open;
-      continue;
-    }
-    const opener = OPENER_OF[ch];
-    if (opener === undefined) {
-      return i;
-    }
-    // 往回找配对的开符; `=>` 与 `->` 里的 `>` 不算尖括号.
-    let depth = 0;
-    let j = i - 1;
-    for (; j >= 0; j--) {
-      const c = code[j];
-      if (c === '>' && (code[j - 1] === '=' || code[j - 1] === '-')) {
-        continue;
-      }
-      if (OPENER_OF[c] !== undefined) {
-        depth++;
-      } else if (c === '(' || c === '[' || c === '{' || c === '<') {
-        depth--;
-        if (depth === 0) break;
-      }
-    }
-    if (j < 0 || code[j] !== opener) {
-      return i;
-    }
-    if (opener === '<' && !/[\w$]/.test(code[j - 1] ?? '')) {
-      return i;
-    }
-    i = j;
-  }
-  return i;
+	let i = end;
+	while (i > 0) {
+		const ch = code[i - 1];
+		if (/[\w$\s.|&?,]/.test(ch)) {
+			i--;
+			continue;
+		}
+		if (ch === '"' || ch === "'") {
+			// 字符串字面量类型 `"a" | "b"`; 不处理转义, 类型里几乎不会出现.
+			const open = code.lastIndexOf(ch, i - 2);
+			if (open === -1) return i;
+			i = open;
+			continue;
+		}
+		const opener = OPENER_OF[ch];
+		if (opener === undefined) {
+			return i;
+		}
+		// 往回找配对的开符; `=>` 与 `->` 里的 `>` 不算尖括号.
+		let depth = 0;
+		let j = i - 1;
+		for (; j >= 0; j--) {
+			const c = code[j];
+			if (c === ">" && (code[j - 1] === "=" || code[j - 1] === "-")) {
+				continue;
+			}
+			if (OPENER_OF[c] !== undefined) {
+				depth++;
+			} else if (c === "(" || c === "[" || c === "{" || c === "<") {
+				depth--;
+				if (depth === 0) break;
+			}
+		}
+		if (j < 0 || code[j] !== opener) {
+			return i;
+		}
+		if (opener === "<" && !/[\w$]/.test(code[j - 1] ?? "")) {
+			return i;
+		}
+		i = j;
+	}
+	return i;
 }
 
 /**
@@ -169,28 +214,30 @@ function skipTypeBackward(code: string, end: number): number {
  * 只认紧跟在 `)` 之后的冒号, 因此对象字面量的 `key: value` 与三元的 `: b` 都不会命中.
  */
 export function returnTypeStart(code: string): number | null {
-  const trimmed = code.replace(/\s+$/, '');
-  const start = skipTypeBackward(trimmed, trimmed.length);
-  if (start === trimmed.length || trimmed.slice(start).trim() === '') {
-    return null;
-  }
-  const before = trimmed.slice(0, start).replace(/\s+$/, '');
-  if (before.endsWith('->')) {
-    return ARROW_RETURN_MODIFIERS.test(before.slice(0, -2)) ? before.length - 2 : null;
-  }
-  if (before.endsWith(':') && !before.endsWith('::')) {
-    return /\)\s*$/.test(before.slice(0, -1)) ? before.length - 1 : null;
-  }
-  return null;
+	const trimmed = code.replace(/\s+$/, "");
+	const start = skipTypeBackward(trimmed, trimmed.length);
+	if (start === trimmed.length || trimmed.slice(start).trim() === "") {
+		return null;
+	}
+	const before = trimmed.slice(0, start).replace(/\s+$/, "");
+	if (before.endsWith("->")) {
+		return ARROW_RETURN_MODIFIERS.test(before.slice(0, -2)) ? before.length - 2 : null;
+	}
+	if (before.endsWith(":") && !before.endsWith("::")) {
+		return /\)\s*$/.test(before.slice(0, -1)) ? before.length - 1 : null;
+	}
+	return null;
 }
 
 /** 以泛型参数收尾的类型声明头: `class A<T>`, `class B extends Base<T>`, `impl<T> Foo<T>`. */
 function isGenericDeclarationHeader(code: string): boolean {
-  return (
-    code.endsWith('>') &&
-    /(^|[\s(;{,=])(class|interface|struct|impl|trait|enum|record|extends|implements)\b/.test(code) &&
-    skipTypeBackward(code, code.length) < code.length
-  );
+	return (
+		code.endsWith(">") &&
+		/(^|[\s(;{,=])(class|interface|struct|impl|trait|enum|record|extends|implements)\b/.test(
+			code
+		) &&
+		skipTypeBackward(code, code.length) < code.length
+	);
 }
 
 /**
@@ -200,18 +247,18 @@ function isGenericDeclarationHeader(code: string): boolean {
  * 这类把运算符放在行首的写法只能看下一行 —— 后者的上一行行尾没有任何符号可查.
  */
 export function isContinuation(codeOfLine: string, nextLineCode?: string): boolean {
-  const code = codeOfLine.replace(/\s+$/, '');
-  if (code !== '' && TRAILING_CONTINUATIONS.some((tail) => code.endsWith(tail))) {
-    return true;
-  }
-  const next = (nextLineCode ?? '').trim();
-  return next !== '' && LEADING_CONTINUATIONS.some((head) => next.startsWith(head));
+	const code = codeOfLine.replace(/\s+$/, "");
+	if (code !== "" && TRAILING_CONTINUATIONS.some(tail => code.endsWith(tail))) {
+		return true;
+	}
+	const next = (nextLineCode ?? "").trim();
+	return next !== "" && LEADING_CONTINUATIONS.some(head => next.startsWith(head));
 }
 
 /** 去掉行注释之后的代码部分; 只用于启发式判定, 不参与状态推进. */
 export function stripLineComment(text: string, config: LexConfig): string {
-  const index = text.indexOf(config.lineComment);
-  return index === -1 ? text : text.slice(0, index);
+	const index = text.indexOf(config.lineComment);
+	return index === -1 ? text : text.slice(0, index);
 }
 
 /**
@@ -221,22 +268,22 @@ export function stripLineComment(text: string, config: LexConfig): string {
  * `switch` 这类关键字也会查不到. 最多回看三行, 避免在残缺文件里一路上溯.
  */
 export function codeBeforeDelimiter(
-  snapshot: DocumentSnapshot,
-  config: LexConfig,
-  line: number,
-  column: number
+	snapshot: DocumentSnapshot,
+	config: LexConfig,
+	line: number,
+	column: number
 ): { line: number; code: string } {
-  const head = snapshot.lineAt(line).text.slice(0, column);
-  if (head.trim() !== '') {
-    return { line, code: head };
-  }
-  for (let probe = line - 1; probe >= 0 && line - probe <= 3; probe--) {
-    const previous = stripLineComment(snapshot.lineAt(probe).text, config);
-    if (previous.trim() !== '') {
-      return { line: probe, code: previous };
-    }
-  }
-  return { line, code: '' };
+	const head = snapshot.lineAt(line).text.slice(0, column);
+	if (head.trim() !== "") {
+		return { line, code: head };
+	}
+	for (let probe = line - 1; probe >= 0 && line - probe <= 3; probe--) {
+		const previous = stripLineComment(snapshot.lineAt(probe).text, config);
+		if (previous.trim() !== "") {
+			return { line: probe, code: previous };
+		}
+	}
+	return { line, code: "" };
 }
 
 /**
@@ -245,140 +292,144 @@ export function codeBeforeDelimiter(
  * 返回数组长度为 `lineCount + 1`: 第 `i` 项是第 `i` 行开始时的状态, 末项是文件结束时的状态.
  */
 export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): LexState[] {
-  const delimiters = longestFirst(config.stringDelimiters);
-  const states: LexState[] = [{ stack: [], openQuote: null, inBlockComment: false }];
-  const stack: OpenDelimiter[] = [];
-  let openQuote: string | null = null;
-  let inBlockComment = false;
+	const delimiters = longestFirst(config.stringDelimiters);
+	const states: LexState[] = [{ stack: [], openQuote: null, inBlockComment: false }];
+	const stack: OpenDelimiter[] = [];
+	let openQuote: string | null = null;
+	let inBlockComment = false;
 
-  for (let line = 0; line < snapshot.lineCount; line++) {
-    const text = snapshot.lineAt(line).text;
-    let i = 0;
+	for (let line = 0; line < snapshot.lineCount; line++) {
+		const text = snapshot.lineAt(line).text;
+		let i = 0;
 
-    while (i < text.length) {
-      if (inBlockComment) {
-        const close = config.blockComment!.close;
-        if (text.startsWith(close, i)) {
-          inBlockComment = false;
-          i += close.length;
-        } else {
-          i++;
-        }
-        continue;
-      }
+		while (i < text.length) {
+			if (inBlockComment) {
+				const close = config.blockComment!.close;
+				if (text.startsWith(close, i)) {
+					inBlockComment = false;
+					i += close.length;
+				} else {
+					i++;
+				}
+				continue;
+			}
 
-      if (openQuote !== null) {
-        if (text[i] === '\\') {
-          i += 2;
-          continue;
-        }
-        if (text.startsWith(openQuote, i)) {
-          i += openQuote.length;
-          openQuote = null;
-          continue;
-        }
-        i++;
-        continue;
-      }
+			if (openQuote !== null) {
+				if (text[i] === "\\") {
+					i += 2;
+					continue;
+				}
+				if (text.startsWith(openQuote, i)) {
+					i += openQuote.length;
+					openQuote = null;
+					continue;
+				}
+				i++;
+				continue;
+			}
 
-      // 块注释开符必须先试: Lua 的行注释 `--` 是块注释 `--[[` 的前缀, 顺序反了就永远进不了块注释.
-      if (config.blockComment !== undefined && text.startsWith(config.blockComment.open, i)) {
-        inBlockComment = true;
-        i += config.blockComment.open.length;
-        continue;
-      }
-      if (text.startsWith(config.lineComment, i)) {
-        break;
-      }
+			// 块注释开符必须先试: Lua 的行注释 `--` 是块注释 `--[[` 的前缀, 顺序反了就永远进不了块注释.
+			if (config.blockComment !== undefined && text.startsWith(config.blockComment.open, i)) {
+				inBlockComment = true;
+				i += config.blockComment.open.length;
+				continue;
+			}
+			if (text.startsWith(config.lineComment, i)) {
+				break;
+			}
 
-      const delimiter = delimiters.find((candidate) => text.startsWith(candidate, i));
-      if (delimiter !== undefined) {
-        openQuote = delimiter;
-        i += delimiter.length;
-        continue;
-      }
+			const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
+			if (delimiter !== undefined) {
+				openQuote = delimiter;
+				i += delimiter.length;
+				continue;
+			}
 
-      const ch = text[i];
-      if (ch === '(') {
-        stack.push({ kind: 'paren', line, column: i });
-      } else if (ch === '[') {
-        stack.push({ kind: 'bracket', line, column: i });
-      } else if (ch === '{') {
-        const kind = classifyBrace(codeBeforeDelimiter(snapshot, config, line, i).code);
-        // 判不出来按字面量处理, 理由见 classifyBrace 的注释.
-        stack.push({ kind: kind === 'block' ? 'brace-block' : 'brace-literal', line, column: i });
-      } else if (ch === ')' || ch === ']' || ch === '}') {
-        // 多余的闭符直接忽略, 不让栈变成负深度.
-        if (stack.length > 0) stack.pop();
-      }
-      i++;
-    }
+			const ch = text[i];
+			if (ch === "(") {
+				stack.push({ kind: "paren", line, column: i });
+			} else if (ch === "[") {
+				stack.push({ kind: "bracket", line, column: i });
+			} else if (ch === "{") {
+				const kind = classifyBrace(codeBeforeDelimiter(snapshot, config, line, i).code);
+				// 判不出来按字面量处理, 理由见 classifyBrace 的注释.
+				stack.push({
+					kind: kind === "block" ? "brace-block" : "brace-literal",
+					line,
+					column: i,
+				});
+			} else if (ch === ")" || ch === "]" || ch === "}") {
+				// 多余的闭符直接忽略, 不让栈变成负深度.
+				if (stack.length > 0) stack.pop();
+			}
+			i++;
+		}
 
-    states.push({ stack: [...stack], openQuote, inBlockComment });
-  }
+		states.push({ stack: [...stack], openQuote, inBlockComment });
+	}
 
-  return states;
+	return states;
 }
 
 /** 某个 offset 落在代码, 行注释, 块注释还是字符串里; 块注释与跨行字符串都算准. */
 export function classifyAt(
-  snapshot: DocumentSnapshot,
-  offset: number,
-  states: readonly LexState[],
-  config: LexConfig
-): 'code' | 'comment' | 'string' {
-  const index = snapshot.lineOf(offset);
-  const line = snapshot.lineAt(index);
-  const column = Math.max(0, Math.min(offset - line.start, line.text.length));
-  const entry = states[index] ?? { stack: [], openQuote: null, inBlockComment: false };
+	snapshot: DocumentSnapshot,
+	offset: number,
+	states: readonly LexState[],
+	config: LexConfig
+): "code" | "comment" | "string" {
+	const index = snapshot.lineOf(offset);
+	const line = snapshot.lineAt(index);
+	const column = Math.max(0, Math.min(offset - line.start, line.text.length));
+	const entry = states[index] ?? { stack: [], openQuote: null, inBlockComment: false };
 
-  const delimiters = longestFirst(config.stringDelimiters);
-  const text = line.text;
-  let openQuote = entry.openQuote;
-  let inBlockComment = entry.inBlockComment;
-  let i = 0;
+	const delimiters = longestFirst(config.stringDelimiters);
+	const text = line.text;
+	let openQuote = entry.openQuote;
+	let inBlockComment = entry.inBlockComment;
+	let i = 0;
 
-  while (i < column) {
-    if (inBlockComment) {
-      const close = config.blockComment!.close;
-      if (text.startsWith(close, i)) {
-        inBlockComment = false;
-        i += close.length;
-      } else {
-        i++;
-      }
-      continue;
-    }
-    if (openQuote !== null) {
-      if (text[i] === '\\') {
-        i += 2;
-        continue;
-      }
-      if (text.startsWith(openQuote, i)) {
-        i += openQuote.length;
-        openQuote = null;
-        continue;
-      }
-      i++;
-      continue;
-    }
-    if (config.blockComment !== undefined && text.startsWith(config.blockComment.open, i)) {
-      inBlockComment = true;
-      i += config.blockComment.open.length;
-      continue;
-    }
-    if (text.startsWith(config.lineComment, i)) {
-      return 'comment';
-    }
-    const delimiter = delimiters.find((candidate) => text.startsWith(candidate, i));
-    if (delimiter !== undefined) {
-      openQuote = delimiter;
-      i += delimiter.length;
-      continue;
-    }
-    i++;
-  }
+	while (i < column) {
+		if (inBlockComment) {
+			const close = config.blockComment!.close;
+			if (text.startsWith(close, i)) {
+				inBlockComment = false;
+				i += close.length;
+			} else {
+				i++;
+			}
+			continue;
+		}
+		if (openQuote !== null) {
+			if (text[i] === "\\") {
+				i += 2;
+				continue;
+			}
+			if (text.startsWith(openQuote, i)) {
+				i += openQuote.length;
+				openQuote = null;
+				continue;
+			}
+			i++;
+			continue;
+		}
+		if (config.blockComment !== undefined && text.startsWith(config.blockComment.open, i)) {
+			inBlockComment = true;
+			i += config.blockComment.open.length;
+			continue;
+		}
+		if (text.startsWith(config.lineComment, i)) {
+			return "comment";
+		}
+		const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
+		if (delimiter !== undefined) {
+			openQuote = delimiter;
+			i += delimiter.length;
+			continue;
+		}
+		i++;
+	}
 
-  if (inBlockComment) return 'comment';
-  return openQuote === null ? 'code' : 'string';
+	if (inBlockComment) return "comment";
+	return openQuote === null ? "code" : "string";
 }

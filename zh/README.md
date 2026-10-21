@@ -21,7 +21,7 @@
 
 ```js
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 ```
 
 ## 一键记录光标处的表达式

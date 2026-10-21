@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
-import { registerChecksumCommands } from './checksums/commands';
-import { insertConsoleLog } from './commands/insertConsoleLog';
-import { toggleAllConsoleLogs } from './commands/toggleAllConsoleLogs';
-import { toggleConsoleLog } from './commands/toggleConsoleLog';
-import { registerPortCommands } from './ports/commands';
-import { createPortsView } from './ports/view/provider';
+import * as vscode from "vscode";
+import { registerChecksumCommands } from "./checksums/commands";
+import { insertConsoleLog } from "./commands/insertConsoleLog";
+import { toggleAllConsoleLogs } from "./commands/toggleAllConsoleLogs";
+import { toggleConsoleLog } from "./commands/toggleConsoleLog";
+import { registerPortCommands } from "./ports/commands";
+import { createPortsView } from "./ports/view/provider";
 
 /**
  * 三个功能域的接线。
@@ -15,15 +15,18 @@ import { createPortsView } from './ports/view/provider';
  * 都挂在 `context.subscriptions` 上由宿主统一释放, 因此不需要单独的 `deactivate`。
  */
 export function activate(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(
-    vscode.commands.registerCommand('editorConsoleToolkit.insertConsoleLog', insertConsoleLog),
-    vscode.commands.registerCommand('editorConsoleToolkit.toggleConsoleLog', toggleConsoleLog),
-    vscode.commands.registerCommand('editorConsoleToolkit.toggleAllConsoleLogs', toggleAllConsoleLogs)
-  );
+	context.subscriptions.push(
+		vscode.commands.registerCommand("editorConsoleToolkit.insertConsoleLog", insertConsoleLog),
+		vscode.commands.registerCommand("editorConsoleToolkit.toggleConsoleLog", toggleConsoleLog),
+		vscode.commands.registerCommand(
+			"editorConsoleToolkit.toggleAllConsoleLogs",
+			toggleAllConsoleLogs
+		)
+	);
 
-  const portsView = createPortsView(context);
-  context.subscriptions.push(portsView);
-  registerPortCommands(context, portsView);
+	const portsView = createPortsView(context);
+	context.subscriptions.push(portsView);
+	registerPortCommands(context, portsView);
 
-  registerChecksumCommands(context);
+	registerChecksumCommands(context);
 }

@@ -9,56 +9,56 @@
  *
  * 只描述图形, 不做渲染; SVG 与 PNG 都由 `scripts/gen-icon.mjs` 从这份数据生成。
  */
-import { SIZE, baseShapes } from './lib/icon-brand.mjs';
+import { SIZE, baseShapes } from "./lib/icon-brand.mjs";
 
 /** 窗口边框用标点色, 与里面的内容拉开层次。 */
-const FRAME = '#C792EA';
+const FRAME = "#C792EA";
 /** 被注释掉的那一行: 压暗而不是隐藏, 保留"这里有东西"的线索。 */
-const MUTED = '#5A6274';
-const ACTIVE = '#6FD6FF';
+const MUTED = "#5A6274";
+const ACTIVE = "#6FD6FF";
 
 /** 三盏灯沿用运行 / 警告 / 已停止的惯用色。 */
-const RUNNING = '#4EDD6E';
-const WARNING = '#FFC145';
-const STOPPED = '#FF6B60';
+const RUNNING = "#4EDD6E";
+const WARNING = "#FFC145";
+const STOPPED = "#FF6B60";
 
 const line = (x1, y, x2, stroke) => ({
-  kind: 'polyline',
-  points: [
-    [x1, y],
-    [x2, y],
-  ],
-  stroke,
-  strokeWidth: 10,
+	kind: "polyline",
+	points: [
+		[x1, y],
+		[x2, y],
+	],
+	stroke,
+	strokeWidth: 10,
 });
 
-const lamp = (cx, fill) => ({ kind: 'circle', cx, cy: 162, r: 9, fill });
+const lamp = (cx, fill) => ({ kind: "circle", cx, cy: 162, r: 9, fill });
 
 export default {
-  size: SIZE,
-  label: 'Editor Console Toolkit',
-  shapes: [
-    ...baseShapes(),
+	size: SIZE,
+	label: "Editor Console Toolkit",
+	shapes: [
+		...baseShapes(),
 
-    // 终端窗口
-    {
-      kind: 'roundedRectStroke',
-      x: 52,
-      y: 62,
-      w: 152,
-      h: 132,
-      r: 20,
-      stroke: FRAME,
-      strokeWidth: 11,
-    },
+		// 终端窗口
+		{
+			kind: "roundedRectStroke",
+			x: 52,
+			y: 62,
+			w: 152,
+			h: 132,
+			r: 20,
+			stroke: FRAME,
+			strokeWidth: 11,
+		},
 
-    // 两行输出: 一行被注释掉, 一行生效
-    line(76, 96, 180, MUTED),
-    line(76, 128, 150, ACTIVE),
+		// 两行输出: 一行被注释掉, 一行生效
+		line(76, 96, 180, MUTED),
+		line(76, 128, 150, ACTIVE),
 
-    // 端口状态灯
-    lamp(76, RUNNING),
-    lamp(106, WARNING),
-    lamp(136, STOPPED),
-  ],
+		// 端口状态灯
+		lamp(76, RUNNING),
+		lamp(106, WARNING),
+		lamp(136, STOPPED),
+	],
 };

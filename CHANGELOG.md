@@ -46,7 +46,7 @@ Adds a third feature area: **Checksum Toolkit**, for silencing the editor's "ins
 - **Restore Checksums** (`editorConsoleToolkit.checksums.restore`): writes the backup back and only then deletes it, so a failure halfway through never leaves you without either file.
 - A backup is **copied** to `product.json.ect-orig.<version>` before the first write, and an interrupted run cannot leave a truncated or missing `product.json` ([what changes on disk](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/checksums.md#know-what-is-changed-on-disk)).
 - **No privilege elevation, ever.** Where the installation is not writable — typically Windows and Linux — the notification hands you the single command to run yourself ([details](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/checksums.md#when-the-installation-is-not-writable)).
-- Backups left behind by *other* editor versions are cleaned up when you run either command. Only files this extension wrote itself (`product.json.ect-orig.*`) are ever removed.
+- Backups left behind by _other_ editor versions are cleaned up when you run either command. Only files this extension wrote itself (`product.json.ect-orig.*`) are ever removed.
 - Both commands refuse to run, with the reason shown, when the extension host is not the machine holding the editor: Remote (SSH, WSL, container) windows, the web, or any case where the editor cannot report its installation folder.
 - 36 tests covering the checksum algorithm against fixed vectors, and the apply/restore ordering, permission-denied and partial-failure paths against an in-memory filesystem — 344 tests in total.
 
@@ -77,7 +77,7 @@ Reworks where an inserted log lands, and turns the ports view's search into a pe
 - The ports view is now named **Port Toolkit** rather than **Listening Processes**, matching its container.
 - `Search Ports` and `Clear Port Search` left the view's title bar: search is the row, and clear is the ✕ on it. Both commands remain in the Command Palette and stay bindable to a key.
 - Block syntax is now read from each language's adapter rather than assumed to be C-like, which is what makes Python's indentation and the `do` / `end` blocks of Ruby, Lua and Elixir land correctly.
-- Log removal now requires the log to sit on the line immediately next to its anchor, which follows from the log no longer always being *after* the statement.
+- Log removal now requires the log to sit on the line immediately next to its anchor, which follows from the log no longer always being _after_ the statement.
 
 ### Fixed
 

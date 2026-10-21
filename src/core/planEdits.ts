@@ -1,35 +1,35 @@
-import type { LanguageAdapter } from '../languages/languageAdapter';
-import { buildMarkerSuffix, isLogLine, stripMarker } from './logMarker';
+import type { LanguageAdapter } from "../languages/languageAdapter";
+import { buildMarkerSuffix, isLogLine, stripMarker } from "./logMarker";
 import type {
-  DocumentSnapshot,
-  EditPlan,
-  InsertionAnchor,
-  OffsetRange,
-  PlannedEdit,
-  SelectionLike,
-  UnsupportedCode
-} from './types';
+	DocumentSnapshot,
+	EditPlan,
+	InsertionAnchor,
+	OffsetRange,
+	PlannedEdit,
+	SelectionLike,
+	UnsupportedCode,
+} from "./types";
 
 /** 逐 selection 工作的模式. */
-export type SelectionMode = 'insert' | 'toggle';
+export type SelectionMode = "insert" | "toggle";
 
 /** 全部命令模式; `toggle-all` 作用于整个文件, 不看 selection. */
-export type CommandMode = SelectionMode | 'toggle-all';
+export type CommandMode = SelectionMode | "toggle-all";
 
 /** 删除整行时连同它的换行符一起去掉; 末行没有后继换行, 就吃掉它前面的那个. */
 function deleteRangeForLine(snapshot: DocumentSnapshot, index: number): OffsetRange {
-  const line = snapshot.lineAt(index);
-  if (index + 1 < snapshot.lineCount) {
-    return { start: line.start, end: snapshot.lineAt(index + 1).start };
-  }
-  if (index > 0) {
-    return { start: snapshot.lineAt(index - 1).end, end: line.end };
-  }
-  return { start: line.start, end: line.end };
+	const line = snapshot.lineAt(index);
+	if (index + 1 < snapshot.lineCount) {
+		return { start: line.start, end: snapshot.lineAt(index + 1).start };
+	}
+	if (index > 0) {
+		return { start: snapshot.lineAt(index - 1).end, end: line.end };
+	}
+	return { start: line.start, end: line.end };
 }
 
 function overlaps(a: OffsetRange, b: OffsetRange): boolean {
-  return a.start < b.end && b.start < a.end;
+	return a.start < b.end && b.start < a.end;
 }
 
 /**
@@ -44,121 +44,125 @@ function overlaps(a: OffsetRange, b: OffsetRange): boolean {
  * 全部 offset 都基于同一份原文档快照, 由调用方在一次 TextEditor.edit 中提交.
  */
 export function planEdits(
-  snapshot: DocumentSnapshot,
-  adapter: LanguageAdapter,
-  prefix: string,
-  selections: readonly SelectionLike[],
-  mode: SelectionMode
+	snapshot: DocumentSnapshot,
+	adapter: LanguageAdapter,
+	prefix: string,
+	selections: readonly SelectionLike[],
+	mode: SelectionMode
 ): EditPlan {
-  const pattern = adapter.markerPattern();
-  const markerSuffix = buildMarkerSuffix(adapter.commentPrefix);
-  const edits: PlannedEdit[] = [];
-  const deletedLines = new Set<number>();
-  const usedAnchors = new Set<number>();
-  const deletedRanges: OffsetRange[] = [];
-  let firstReason: UnsupportedCode | null = null;
+	const pattern = adapter.markerPattern();
+	const markerSuffix = buildMarkerSuffix(adapter.commentPrefix);
+	const edits: PlannedEdit[] = [];
+	const deletedLines = new Set<number>();
+	const usedAnchors = new Set<number>();
+	const deletedRanges: OffsetRange[] = [];
+	let firstReason: UnsupportedCode | null = null;
 
-  const noteReason = (code: UnsupportedCode): void => {
-    firstReason ??= code;
-  };
+	const noteReason = (code: UnsupportedCode): void => {
+		firstReason ??= code;
+	};
 
-  const pushDelete = (lineIndex: number): void => {
-    if (deletedLines.has(lineIndex)) {
-      return;
-    }
-    const range = deleteRangeForLine(snapshot, lineIndex);
-    if (deletedRanges.some((existing) => overlaps(existing, range))) {
-      return;
-    }
-    deletedLines.add(lineIndex);
-    deletedRanges.push(range);
-    edits.push({ kind: 'delete', range });
-  };
+	const pushDelete = (lineIndex: number): void => {
+		if (deletedLines.has(lineIndex)) {
+			return;
+		}
+		const range = deleteRangeForLine(snapshot, lineIndex);
+		if (deletedRanges.some(existing => overlaps(existing, range))) {
+			return;
+		}
+		deletedLines.add(lineIndex);
+		deletedRanges.push(range);
+		edits.push({ kind: "delete", range });
+	};
 
-  /**
-   * 锚点相邻的那一行如果已经是日志行, 返回它的行号.
-   *
-   * 方向跟着 placement 走: 日志插在锚点行之后时看下一行, 插在之前时看上一行. 方向错了
-   * toggle 就删不掉自己刚插的那条, 而是又插一条新的.
-   */
-  const adjacentLogLine = (anchor: InsertionAnchor): number | null => {
-    const adjacent = anchor.placement === 'before-line' ? anchor.line - 1 : anchor.line + 1;
-    if (adjacent < 0 || adjacent >= snapshot.lineCount) {
-      return null;
-    }
-    return isLogLine(snapshot.lineAt(adjacent).text, pattern) ? adjacent : null;
-  };
+	/**
+	 * 锚点相邻的那一行如果已经是日志行, 返回它的行号.
+	 *
+	 * 方向跟着 placement 走: 日志插在锚点行之后时看下一行, 插在之前时看上一行. 方向错了
+	 * toggle 就删不掉自己刚插的那条, 而是又插一条新的.
+	 */
+	const adjacentLogLine = (anchor: InsertionAnchor): number | null => {
+		const adjacent = anchor.placement === "before-line" ? anchor.line - 1 : anchor.line + 1;
+		if (adjacent < 0 || adjacent >= snapshot.lineCount) {
+			return null;
+		}
+		return isLogLine(snapshot.lineAt(adjacent).text, pattern) ? adjacent : null;
+	};
 
-  for (const selection of selections) {
-    if (mode === 'toggle') {
-      const cursorLine = snapshot.lineOf(selection.active);
-      if (isLogLine(snapshot.lineAt(cursorLine).text, pattern)) {
-        pushDelete(cursorLine);
-        continue;
-      }
-    }
+	for (const selection of selections) {
+		if (mode === "toggle") {
+			const cursorLine = snapshot.lineOf(selection.active);
+			if (isLogLine(snapshot.lineAt(cursorLine).text, pattern)) {
+				pushDelete(cursorLine);
+				continue;
+			}
+		}
 
-    const target = adapter.resolveTarget(snapshot, selection);
-    if (target.kind === 'unsupported') {
-      noteReason(target.code);
-      continue;
-    }
+		const target = adapter.resolveTarget(snapshot, selection);
+		if (target.kind === "unsupported") {
+			noteReason(target.code);
+			continue;
+		}
 
-    const anchor = adapter.locateInsertion(snapshot, target);
-    if (anchor.kind === 'unsupported') {
-      noteReason(anchor.code);
-      continue;
-    }
+		const anchor = adapter.locateInsertion(snapshot, target);
+		if (anchor.kind === "unsupported") {
+			noteReason(anchor.code);
+			continue;
+		}
 
-    if (usedAnchors.has(anchor.offset)) {
-      continue;
-    }
+		if (usedAnchors.has(anchor.offset)) {
+			continue;
+		}
 
-    const existingLog = adjacentLogLine(anchor);
-    if (mode === 'toggle' && existingLog !== null) {
-      usedAnchors.add(anchor.offset);
-      pushDelete(existingLog);
-      continue;
-    }
+		const existingLog = adjacentLogLine(anchor);
+		if (mode === "toggle" && existingLog !== null) {
+			usedAnchors.add(anchor.offset);
+			pushDelete(existingLog);
+			continue;
+		}
 
-    const body = adapter.renderLog({
-      prefix,
-      label: target.label,
-      expression: target.expression
-    }).body;
+		const body = adapter.renderLog({
+			prefix,
+			label: target.label,
+			expression: target.expression,
+		}).body;
 
-    if (
-      mode === 'insert' &&
-      existingLog !== null &&
-      stripMarker(snapshot.lineAt(existingLog).text, pattern) === body
-    ) {
-      usedAnchors.add(anchor.offset);
-      continue;
-    }
+		if (
+			mode === "insert" &&
+			existingLog !== null &&
+			stripMarker(snapshot.lineAt(existingLog).text, pattern) === body
+		) {
+			usedAnchors.add(anchor.offset);
+			continue;
+		}
 
-    usedAnchors.add(anchor.offset);
-    // 插在行尾时换行符在前(新起一行), 插在行首时换行符在后(把原行推下去).
-    edits.push({
-      kind: 'insert',
-      offset: anchor.offset,
-      text:
-        anchor.placement === 'before-line'
-          ? `${anchor.indent}${body}${markerSuffix}${snapshot.eol}`
-          : `${snapshot.eol}${anchor.indent}${body}${markerSuffix}`
-    });
-  }
+		usedAnchors.add(anchor.offset);
+		// 插在行尾时换行符在前(新起一行), 插在行首时换行符在后(把原行推下去).
+		edits.push({
+			kind: "insert",
+			offset: anchor.offset,
+			text:
+				anchor.placement === "before-line"
+					? `${anchor.indent}${body}${markerSuffix}${snapshot.eol}`
+					: `${snapshot.eol}${anchor.indent}${body}${markerSuffix}`,
+		});
+	}
 
-  return { edits, firstReason };
+	return { edits, firstReason };
 }
 
 /** 已被注释掉的日志行需要删掉的字符数(注释符加至多一个空格); 不是注释行返回 null. */
-function commentedLength(lineText: string, indentLength: number, commentPrefix: string): number | null {
-  const rest = lineText.slice(indentLength);
-  if (!rest.startsWith(commentPrefix)) {
-    return null;
-  }
-  const after = rest.slice(commentPrefix.length);
-  return commentPrefix.length + (after.startsWith(' ') ? 1 : 0);
+function commentedLength(
+	lineText: string,
+	indentLength: number,
+	commentPrefix: string
+): number | null {
+	const rest = lineText.slice(indentLength);
+	if (!rest.startsWith(commentPrefix)) {
+		return null;
+	}
+	const after = rest.slice(commentPrefix.length);
+	return commentPrefix.length + (after.startsWith(" ") ? 1 : 0);
 }
 
 /**
@@ -169,40 +173,40 @@ function commentedLength(lineText: string, indentLength: number, commentPrefix: 
  * 行尾 marker 不受影响, 之后仍能被单条 Toggle 识别.
  */
 export function planToggleAllLogs(snapshot: DocumentSnapshot, adapter: LanguageAdapter): EditPlan {
-  const pattern = adapter.markerPattern();
-  const commentPrefix = adapter.commentPrefix;
-  const targets: { offset: number; commented: number | null }[] = [];
+	const pattern = adapter.markerPattern();
+	const commentPrefix = adapter.commentPrefix;
+	const targets: { offset: number; commented: number | null }[] = [];
 
-  for (let index = 0; index < snapshot.lineCount; index++) {
-    const line = snapshot.lineAt(index);
-    if (!isLogLine(line.text, pattern)) {
-      continue;
-    }
-    const indentLength = /^[ \t]*/.exec(line.text)![0].length;
-    targets.push({
-      offset: line.start + indentLength,
-      commented: commentedLength(line.text, indentLength, commentPrefix)
-    });
-  }
+	for (let index = 0; index < snapshot.lineCount; index++) {
+		const line = snapshot.lineAt(index);
+		if (!isLogLine(line.text, pattern)) {
+			continue;
+		}
+		const indentLength = /^[ \t]*/.exec(line.text)![0].length;
+		targets.push({
+			offset: line.start + indentLength,
+			commented: commentedLength(line.text, indentLength, commentPrefix),
+		});
+	}
 
-  if (targets.length === 0) {
-    return { edits: [], firstReason: 'no-managed-logs' };
-  }
+	if (targets.length === 0) {
+		return { edits: [], firstReason: "no-managed-logs" };
+	}
 
-  const edits: PlannedEdit[] = [];
-  const hasActive = targets.some((target) => target.commented === null);
-  for (const target of targets) {
-    if (hasActive) {
-      if (target.commented === null) {
-        edits.push({ kind: 'insert', offset: target.offset, text: `${commentPrefix} ` });
-      }
-    } else {
-      edits.push({
-        kind: 'delete',
-        range: { start: target.offset, end: target.offset + target.commented! }
-      });
-    }
-  }
+	const edits: PlannedEdit[] = [];
+	const hasActive = targets.some(target => target.commented === null);
+	for (const target of targets) {
+		if (hasActive) {
+			if (target.commented === null) {
+				edits.push({ kind: "insert", offset: target.offset, text: `${commentPrefix} ` });
+			}
+		} else {
+			edits.push({
+				kind: "delete",
+				range: { start: target.offset, end: target.offset + target.commented! },
+			});
+		}
+	}
 
-  return { edits, firstReason: null };
+	return { edits, firstReason: null };
 }

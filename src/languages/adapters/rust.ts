@@ -1,5 +1,5 @@
-import { doubleBraces, escapeLiteral } from '../escape';
-import { createTemplateAdapter } from '../templateAdapter';
+import { doubleBraces, escapeLiteral } from "../escape";
+import { createTemplateAdapter } from "../templateAdapter";
 
 /**
  * 格式串里的花括号必须双写.
@@ -7,13 +7,13 @@ import { createTemplateAdapter } from '../templateAdapter';
  * 目标值必须实现 Debug, README 已写明该限制.
  */
 export const rustAdapter = createTemplateAdapter({
-  id: 'rust',
-  languageIds: ['rust'],
-  commentPrefix: '//',
-  blockComment: { open: '/*', close: '*/' },
-  quote: '"',
-  restrictedBlockKeywords: ['match', 'impl', 'struct', 'enum', 'trait'],
-  stringDelimiters: ['"'],
-  escapeText: (raw, quote) => doubleBraces(escapeLiteral(raw, quote)),
-  render: ({ text, expr, q }) => `println!(${q}${text} {:?}${q}, ${expr});`
+	id: "rust",
+	languageIds: ["rust"],
+	commentPrefix: "//",
+	blockComment: { open: "/*", close: "*/" },
+	quote: '"',
+	restrictedBlockKeywords: ["match", "impl", "struct", "enum", "trait"],
+	stringDelimiters: ['"'],
+	escapeText: (raw, quote) => doubleBraces(escapeLiteral(raw, quote)),
+	render: ({ text, expr, q }) => `println!(${q}${text} {:?}${q}, ${expr});`,
 });

@@ -1,4 +1,4 @@
-import type { RunCommand } from './types';
+import type { RunCommand } from "./types";
 
 /**
  * 编辑器自身的进程保护。
@@ -18,26 +18,26 @@ const MAX_DEPTH = 16;
  * 通用: 取输出里的第一个整数。
  */
 export function parsePpid(stdout: string): number | null {
-  const match = /(\d+)/.exec(stdout.trim());
-  if (!match) return null;
-  const ppid = Number(match[1]);
-  return Number.isInteger(ppid) && ppid > 0 ? ppid : null;
+	const match = /(\d+)/.exec(stdout.trim());
+	if (!match) return null;
+	const ppid = Number(match[1]);
+	return Number.isInteger(ppid) && ppid > 0 ? ppid : null;
 }
 
 /** 查询单个进程的父进程; Windows 没有 `ps`, 走 PowerShell。 */
 function ppidCommand(pid: number, platform: NodeJS.Platform): [string, string[]] {
-  if (platform === 'win32') {
-    return [
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        `(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').ParentProcessId`,
-      ],
-    ];
-  }
-  return ['ps', ['-o', 'ppid=', '-p', String(pid)]];
+	if (platform === "win32") {
+		return [
+			"powershell.exe",
+			[
+				"-NoProfile",
+				"-NonInteractive",
+				"-Command",
+				`(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').ParentProcessId`,
+			],
+		];
+	}
+	return ["ps", ["-o", "ppid=", "-p", String(pid)]];
 }
 
 /**
@@ -47,28 +47,28 @@ function ppidCommand(pid: number, platform: NodeJS.Platform): [string, string[]]
  * 而抛错会让整个视图不可用。
  */
 export async function collectAncestors(
-  pid: number,
-  run: RunCommand,
-  platform: NodeJS.Platform = process.platform
+	pid: number,
+	run: RunCommand,
+	platform: NodeJS.Platform = process.platform
 ): Promise<Set<number>> {
-  const ancestors = new Set<number>([pid]);
-  let current = pid;
+	const ancestors = new Set<number>([pid]);
+	let current = pid;
 
-  for (let depth = 0; depth < MAX_DEPTH; depth += 1) {
-    let ppid: number | null = null;
-    try {
-      const [file, args] = ppidCommand(current, platform);
-      const { stdout } = await run(file, args);
-      ppid = parsePpid(stdout);
-    } catch {
-      break;
-    }
+	for (let depth = 0; depth < MAX_DEPTH; depth += 1) {
+		let ppid: number | null = null;
+		try {
+			const [file, args] = ppidCommand(current, platform);
+			const { stdout } = await run(file, args);
+			ppid = parsePpid(stdout);
+		} catch {
+			break;
+		}
 
-    // init (1) 之上没有可保护的东西; 已见过的 pid 说明链成环。
-    if (ppid === null || ppid === 1 || ancestors.has(ppid)) break;
-    ancestors.add(ppid);
-    current = ppid;
-  }
+		// init (1) 之上没有可保护的东西; 已见过的 pid 说明链成环。
+		if (ppid === null || ppid === 1 || ancestors.has(ppid)) break;
+		ancestors.add(ppid);
+		current = ppid;
+	}
 
-  return ancestors;
+	return ancestors;
 }

@@ -19,7 +19,7 @@ This VS Code extension is for developers who debug with print statements and run
 
 ```js
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 ```
 
 ## Log the expression under your cursor

@@ -15,7 +15,7 @@ All three are in the Command Palette under `Console Toolkit`; only Insert Consol
 ```js
 // before
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 
 // after one run of Toggle All Console Logs
 const user = getUser();
@@ -38,11 +38,11 @@ Every cursor gets its own log, and everything one command changes is a single un
 
 The log goes where the value already exists, chosen by the line the cursor is on:
 
-| Cursor is on | The log goes |
-| --- | --- |
-| a line that opens a block: a function signature, an `if` / `for` condition line, a callback body | inside the block, as its first statement, indented like the rest of the block |
+| Cursor is on                                                                                       | The log goes                                                                  |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| a line that opens a block: a function signature, an `if` / `for` condition line, a callback body   | inside the block, as its first statement, indented like the rest of the block |
 | a line that opens a block that cannot hold statements: `switch`, `class`, Rust's `match` or `impl` | on the line before that statement, where the value has already been evaluated |
-| anything else | after the enclosing statement, however many lines it spans |
+| anything else                                                                                      | after the enclosing statement, however many lines it spans                    |
 
 When the syntax is ambiguous, for example a lone `{` that could open either a block or an object literal, the log lands after the whole statement: further out than you might want, but never syntactically broken. One undo takes back any placement you do not like.
 
@@ -50,20 +50,20 @@ When the syntax is ambiguous, for example a lone `{` that could open either a bl
 
 Twelve adapters cover 15 language IDs. No imports are ever added, which is why Java and C# use fully qualified names.
 
-| Language | Language IDs | Generated statement |
-| --- | --- | --- |
-| JavaScript / JSX / TypeScript / TSX | `javascript`, `javascriptreact`, `typescript`, `typescriptreact` | `console.log('🎯🎯🎯 [DEBUG] user:', user);` |
-| Python | `python` | `print('🎯🎯🎯 [DEBUG] user:', user)` |
-| Java | `java` | `System.out.println("🎯🎯🎯 [DEBUG] user: " + String.valueOf(user));` |
-| Kotlin | `kotlin` | `println("🎯🎯🎯 [DEBUG] user: ${user}")` |
-| C# | `csharp` | `System.Console.WriteLine("🎯🎯🎯 [DEBUG] user: {0}", user);` |
-| Lua | `lua` | `print("🎯🎯🎯 [DEBUG] user:", user)` |
-| Ruby | `ruby` | `puts "🎯🎯🎯 [DEBUG] user: #{(user).inspect}"` |
-| PHP | `php` | `var_dump('🎯🎯🎯 [DEBUG] user:', $user);` |
-| Swift | `swift` | `print("🎯🎯🎯 [DEBUG] user:", user)` |
-| Dart | `dart` | `print('🎯🎯🎯 [DEBUG] user: ${user}');` |
-| Rust | `rust` | `println!("🎯🎯🎯 [DEBUG] user: {:?}", user);` |
-| Elixir | `elixir` | `IO.inspect(user, label: "🎯🎯🎯 [DEBUG] user")` |
+| Language                            | Language IDs                                                     | Generated statement                                                   |
+| ----------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| JavaScript / JSX / TypeScript / TSX | `javascript`, `javascriptreact`, `typescript`, `typescriptreact` | `console.log('🎯🎯🎯 [DEBUG] user:', user);`                          |
+| Python                              | `python`                                                         | `print('🎯🎯🎯 [DEBUG] user:', user)`                                 |
+| Java                                | `java`                                                           | `System.out.println("🎯🎯🎯 [DEBUG] user: " + String.valueOf(user));` |
+| Kotlin                              | `kotlin`                                                         | `println("🎯🎯🎯 [DEBUG] user: ${user}")`                             |
+| C#                                  | `csharp`                                                         | `System.Console.WriteLine("🎯🎯🎯 [DEBUG] user: {0}", user);`         |
+| Lua                                 | `lua`                                                            | `print("🎯🎯🎯 [DEBUG] user:", user)`                                 |
+| Ruby                                | `ruby`                                                           | `puts "🎯🎯🎯 [DEBUG] user: #{(user).inspect}"`                       |
+| PHP                                 | `php`                                                            | `var_dump('🎯🎯🎯 [DEBUG] user:', $user);`                            |
+| Swift                               | `swift`                                                          | `print("🎯🎯🎯 [DEBUG] user:", user)`                                 |
+| Dart                                | `dart`                                                           | `print('🎯🎯🎯 [DEBUG] user: ${user}');`                              |
+| Rust                                | `rust`                                                           | `println!("🎯🎯🎯 [DEBUG] user: {:?}", user);`                        |
+| Elixir                              | `elixir`                                                         | `IO.inspect(user, label: "🎯🎯🎯 [DEBUG] user")`                      |
 
 Language-specific limits:
 
@@ -96,12 +96,7 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 - An empty prefix is allowed and gives you `user:` instead of `🎯🎯🎯 [DEBUG] user:`.
 
 ```json
-{
-  "editorConsoleToolkit.prefix": "[debug]",
-  "[python]": {
-    "editorConsoleToolkit.prefix": "[py]"
-  }
-}
+{ "editorConsoleToolkit.prefix": "[debug]", "[python]": { "editorConsoleToolkit.prefix": "[py]" } }
 ```
 
 ## Bind or rebind the keys
@@ -110,20 +105,17 @@ print('🎯🎯🎯 [DEBUG] user:', user) # ect:v1
 
 ```json
 [
-  {
-    "key": "ctrl+alt+shift+l",
-    "command": "editorConsoleToolkit.toggleConsoleLog",
-    "when": "editorTextFocus && !editorReadonly"
-  },
-  {
-    "key": "ctrl+alt+shift+k",
-    "command": "editorConsoleToolkit.toggleAllConsoleLogs",
-    "when": "editorTextFocus && !editorReadonly"
-  },
-  {
-    "key": "alt+l",
-    "command": "-editorConsoleToolkit.insertConsoleLog"
-  }
+	{
+		"key": "ctrl+alt+shift+l",
+		"command": "editorConsoleToolkit.toggleConsoleLog",
+		"when": "editorTextFocus && !editorReadonly"
+	},
+	{
+		"key": "ctrl+alt+shift+k",
+		"command": "editorConsoleToolkit.toggleAllConsoleLogs",
+		"when": "editorTextFocus && !editorReadonly"
+	},
+	{ "key": "alt+l", "command": "-editorConsoleToolkit.insertConsoleLog" }
 ]
 ```
 

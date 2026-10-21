@@ -1,253 +1,258 @@
 {
-  "name": "editor-console-toolkit",
-  "displayName": "Editor Console Toolkit",
-  "description": "%extension.description%",
-  "version": "0.0.7",
-  "publisher": "HeavenSky",
-  "author": {
-    "name": "calla",
-    "email": "aurora.calla@outlook.com"
-  },
-  "license": "MIT",
-  "icon": "media/icon.png",
-  "l10n": "./l10n",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/HeavenSky/editor-console-toolkit.git"
-  },
-  "homepage": "https://github.com/HeavenSky/editor-console-toolkit",
-  "bugs": {
-    "url": "https://github.com/HeavenSky/editor-console-toolkit/issues"
-  },
-  "engines": {
-    "vscode": "^1.101.0",
-    "node": ">=22.15.1"
-  },
-  "categories": [
-    "Debuggers",
-    "Other"
-  ],
-  "keywords": [
-    "console",
-    "log",
-    "debug",
-    "toggle log",
-    "multi language",
-    "developer tools",
-    "port",
-    "kill process",
-    "lsof",
-    "netstat",
-    "checksum",
-    "product.json",
-    "unsupported"
-  ],
-  "files": [
-    "out/extension.js",
-    "l10n",
-    "media/icon.png",
-    "media/ports.svg",
-    "package.nls.json",
-    "package.nls.zh-cn.json",
-    "LICENSE.txt",
-    "CHANGELOG.md"
-  ],
-  "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "editorConsoleToolkit.insertConsoleLog",
-        "title": "%command.insertConsoleLog%",
-        "category": "%category%"
-      },
-      {
-        "command": "editorConsoleToolkit.toggleConsoleLog",
-        "title": "%command.toggleConsoleLog%",
-        "category": "%category%"
-      },
-      {
-        "command": "editorConsoleToolkit.toggleAllConsoleLogs",
-        "title": "%command.toggleAllConsoleLogs%",
-        "category": "%category%"
-      },
-      {
-        "command": "editorConsoleToolkit.ports.refresh",
-        "title": "%command.ports.refresh%",
-        "category": "%category.ports%",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "editorConsoleToolkit.ports.killSelected",
-        "title": "%command.ports.killSelected%",
-        "category": "%category.ports%",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "editorConsoleToolkit.ports.killOne",
-        "title": "%command.ports.killOne%",
-        "category": "%category.ports%",
-        "icon": "$(close)"
-      },
-      {
-        "command": "editorConsoleToolkit.ports.toggleSystemProcesses",
-        "title": "%command.ports.toggleSystemProcesses%",
-        "category": "%category.ports%",
-        "icon": "$(filter)"
-      },
-      {
-        "command": "editorConsoleToolkit.ports.search",
-        "title": "%command.ports.search%",
-        "category": "%category.ports%",
-        "icon": "$(search)"
-      },
-      {
-        "command": "editorConsoleToolkit.ports.clearSearch",
-        "title": "%command.ports.clearSearch%",
-        "category": "%category.ports%",
-        "icon": "$(clear-all)"
-      },
-      {
-        "command": "editorConsoleToolkit.checksums.apply",
-        "title": "%command.checksums.apply%",
-        "category": "%category.checksums%"
-      },
-      {
-        "command": "editorConsoleToolkit.checksums.restore",
-        "title": "%command.checksums.restore%",
-        "category": "%category.checksums%"
-      }
-    ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "editorConsoleToolkitPorts",
-          "title": "%view.ports.container%",
-          "icon": "media/ports.svg"
-        }
-      ]
-    },
-    "views": {
-      "editorConsoleToolkitPorts": [
-        {
-          "id": "editorConsoleToolkit.ports.view",
-          "name": "%view.ports.name%",
-          "icon": "media/ports.svg"
-        }
-      ]
-    },
-    "menus": {
-      "commandPalette": [
-        {
-          "command": "editorConsoleToolkit.ports.killOne",
-          "when": "false"
-        },
-        {
-          "command": "editorConsoleToolkit.ports.clearSearch",
-          "when": "false"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "editorConsoleToolkit.ports.killSelected",
-          "when": "view == editorConsoleToolkit.ports.view",
-          "group": "navigation@1"
-        },
-        {
-          "command": "editorConsoleToolkit.ports.toggleSystemProcesses",
-          "when": "view == editorConsoleToolkit.ports.view",
-          "group": "navigation@2"
-        },
-        {
-          "command": "editorConsoleToolkit.ports.refresh",
-          "when": "view == editorConsoleToolkit.ports.view",
-          "group": "navigation@3"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "editorConsoleToolkit.ports.killOne",
-          "when": "view == editorConsoleToolkit.ports.view && viewItem == portProcess",
-          "group": "inline"
-        },
-        {
-          "command": "editorConsoleToolkit.ports.clearSearch",
-          "when": "view == editorConsoleToolkit.ports.view && viewItem == portSearchActive",
-          "group": "inline"
-        }
-      ]
-    },
-    "keybindings": [
-      {
-        "command": "editorConsoleToolkit.insertConsoleLog",
-        "key": "alt+l",
-        "when": "editorTextFocus && !editorReadonly"
-      }
-    ],
-    "configuration": {
-      "title": "Editor Console Toolkit",
-      "properties": {
-        "editorConsoleToolkit.prefix": {
-          "type": "string",
-          "default": "🎯🎯🎯 [DEBUG]",
-          "maxLength": 80,
-          "scope": "language-overridable",
-          "description": "%config.prefix%"
-        },
-        "editorConsoleToolkit.ports.refreshInterval": {
-          "type": "number",
-          "default": 5000,
-          "minimum": 0,
-          "maximum": 600000,
-          "description": "%config.ports.refreshInterval%"
-        },
-        "editorConsoleToolkit.ports.killTimeout": {
-          "type": "number",
-          "default": 3000,
-          "minimum": 0,
-          "maximum": 60000,
-          "description": "%config.ports.killTimeout%"
-        },
-        "editorConsoleToolkit.ports.hideSystemProcesses": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.ports.hideSystemProcesses%"
-        },
-        "editorConsoleToolkit.ports.systemPortMax": {
-          "type": "number",
-          "default": 1024,
-          "minimum": 0,
-          "maximum": 65535,
-          "description": "%config.ports.systemPortMax%"
-        },
-        "editorConsoleToolkit.ports.includeUdp": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.ports.includeUdp%"
-        }
-      }
-    }
-  },
-  "scripts": {
-    "compile": "node build.mjs",
-    "build": "node build.mjs --production",
-    "watch": "node build.mjs --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "check": "node scripts/check.mjs",
-    "check:template": "node scripts/check-template.mjs",
-    "gen:icon": "node scripts/gen-icon.mjs",
-    "package": "node scripts/package.mjs",
-    "vscode:prepublish": "npm run build",
-    "shots": "node scripts/shoot.mjs --readme"
-  },
-  "devDependencies": {
-    "@types/node": "^26.6.5",
-    "@vscode/vsce": "^4.0.0",
-    "esbuild": "^0.28.2",
-    "playwright-core": "^1.64.0",
-    "sharp": "^0.35.5",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.3",
-    "vscode-types": "npm:@types/vscode@^1.140.0"
-  }
+	"name": "editor-console-toolkit",
+	"displayName": "Editor Console Toolkit",
+	"version": "0.0.7",
+	"description": "%extension.description%",
+	"categories": [
+		"Debuggers",
+		"Other"
+	],
+	"keywords": [
+		"checksum",
+		"console",
+		"debug",
+		"developer tools",
+		"kill process",
+		"log",
+		"lsof",
+		"multi language",
+		"netstat",
+		"port",
+		"product.json",
+		"toggle log",
+		"unsupported"
+	],
+	"homepage": "https://github.com/HeavenSky/editor-console-toolkit",
+	"bugs": {
+		"url": "https://github.com/HeavenSky/editor-console-toolkit/issues"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "calla",
+		"email": "aurora.calla@outlook.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/HeavenSky/editor-console-toolkit.git"
+	},
+	"publisher": "HeavenSky",
+	"files": [
+		"out/extension.js",
+		"l10n",
+		"media/icon.png",
+		"media/ports.svg",
+		"package.nls.json",
+		"package.nls.zh-cn.json",
+		"LICENSE.txt",
+		"CHANGELOG.md"
+	],
+	"main": "./out/extension.js",
+	"scripts": {
+		"compile": "node build.mjs",
+		"build": "node build.mjs --production",
+		"watch": "node build.mjs --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"lint": "oxlint --fix",
+		"lint:check": "oxlint --deny-warnings",
+		"fmt": "oxfmt --write",
+		"fmt:check": "oxfmt --check",
+		"check": "node scripts/check.mjs",
+		"gen:icon": "node scripts/gen-icon.mjs",
+		"package": "node scripts/package.mjs",
+		"vscode:prepublish": "npm run build",
+		"shots": "node scripts/shoot.mjs --readme"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.5",
+		"@vscode/vsce": "^4.0.0",
+		"esbuild": "^0.28.2",
+		"oxfmt": "^0.74.0",
+		"oxlint": "^1.89.0",
+		"playwright-core": "^1.64.0",
+		"sharp": "^0.35.5",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.3",
+		"vscode-types": "npm:@types/vscode@^1.140.0"
+	},
+	"l10n": "./l10n",
+	"contributes": {
+		"commands": [
+			{
+				"command": "editorConsoleToolkit.insertConsoleLog",
+				"title": "%command.insertConsoleLog%",
+				"category": "%category%"
+			},
+			{
+				"command": "editorConsoleToolkit.toggleConsoleLog",
+				"title": "%command.toggleConsoleLog%",
+				"category": "%category%"
+			},
+			{
+				"command": "editorConsoleToolkit.toggleAllConsoleLogs",
+				"title": "%command.toggleAllConsoleLogs%",
+				"category": "%category%"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.refresh",
+				"title": "%command.ports.refresh%",
+				"category": "%category.ports%",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.killSelected",
+				"title": "%command.ports.killSelected%",
+				"category": "%category.ports%",
+				"icon": "$(trash)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.killOne",
+				"title": "%command.ports.killOne%",
+				"category": "%category.ports%",
+				"icon": "$(close)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.toggleSystemProcesses",
+				"title": "%command.ports.toggleSystemProcesses%",
+				"category": "%category.ports%",
+				"icon": "$(filter)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.search",
+				"title": "%command.ports.search%",
+				"category": "%category.ports%",
+				"icon": "$(search)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.clearSearch",
+				"title": "%command.ports.clearSearch%",
+				"category": "%category.ports%",
+				"icon": "$(clear-all)"
+			},
+			{
+				"command": "editorConsoleToolkit.checksums.apply",
+				"title": "%command.checksums.apply%",
+				"category": "%category.checksums%"
+			},
+			{
+				"command": "editorConsoleToolkit.checksums.restore",
+				"title": "%command.checksums.restore%",
+				"category": "%category.checksums%"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "editorConsoleToolkitPorts",
+					"title": "%view.ports.container%",
+					"icon": "media/ports.svg"
+				}
+			]
+		},
+		"views": {
+			"editorConsoleToolkitPorts": [
+				{
+					"id": "editorConsoleToolkit.ports.view",
+					"name": "%view.ports.name%",
+					"icon": "media/ports.svg"
+				}
+			]
+		},
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "editorConsoleToolkit.ports.killOne",
+					"when": "false"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.clearSearch",
+					"when": "false"
+				}
+			],
+			"view/title": [
+				{
+					"command": "editorConsoleToolkit.ports.killSelected",
+					"when": "view == editorConsoleToolkit.ports.view",
+					"group": "navigation@1"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.toggleSystemProcesses",
+					"when": "view == editorConsoleToolkit.ports.view",
+					"group": "navigation@2"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.refresh",
+					"when": "view == editorConsoleToolkit.ports.view",
+					"group": "navigation@3"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "editorConsoleToolkit.ports.killOne",
+					"when": "view == editorConsoleToolkit.ports.view && viewItem == portProcess",
+					"group": "inline"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.clearSearch",
+					"when": "view == editorConsoleToolkit.ports.view && viewItem == portSearchActive",
+					"group": "inline"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"command": "editorConsoleToolkit.insertConsoleLog",
+				"key": "alt+l",
+				"when": "editorTextFocus && !editorReadonly"
+			}
+		],
+		"configuration": {
+			"title": "Editor Console Toolkit",
+			"properties": {
+				"editorConsoleToolkit.prefix": {
+					"type": "string",
+					"default": "🎯🎯🎯 [DEBUG]",
+					"maxLength": 80,
+					"scope": "language-overridable",
+					"description": "%config.prefix%"
+				},
+				"editorConsoleToolkit.ports.refreshInterval": {
+					"type": "number",
+					"default": 5000,
+					"minimum": 0,
+					"maximum": 600000,
+					"description": "%config.ports.refreshInterval%"
+				},
+				"editorConsoleToolkit.ports.killTimeout": {
+					"type": "number",
+					"default": 3000,
+					"minimum": 0,
+					"maximum": 60000,
+					"description": "%config.ports.killTimeout%"
+				},
+				"editorConsoleToolkit.ports.hideSystemProcesses": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.ports.hideSystemProcesses%"
+				},
+				"editorConsoleToolkit.ports.systemPortMax": {
+					"type": "number",
+					"default": 1024,
+					"minimum": 0,
+					"maximum": 65535,
+					"description": "%config.ports.systemPortMax%"
+				},
+				"editorConsoleToolkit.ports.includeUdp": {
+					"type": "boolean",
+					"default": false,
+					"description": "%config.ports.includeUdp%"
+				}
+			}
+		}
+	},
+	"icon": "media/icon.png",
+	"engines": {
+		"node": ">=22.15.1",
+		"vscode": "^1.101.0"
+	}
 }

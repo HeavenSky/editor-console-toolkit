@@ -1,46 +1,46 @@
 import {
-  classifyAt,
-  codeBeforeDelimiter,
-  isContinuation,
-  returnTypeStart,
-  scanDocument,
-  stripLineComment
-} from './lexer';
-import type { LexConfig, LexState, OpenDelimiter } from './lexer';
-import { unsupported } from './types';
-import type { DocumentSnapshot, ExpressionTarget, InsertionAnchor, Unsupported } from './types';
+	classifyAt,
+	codeBeforeDelimiter,
+	isContinuation,
+	returnTypeStart,
+	scanDocument,
+	stripLineComment,
+} from "./lexer";
+import type { LexConfig, LexState, OpenDelimiter } from "./lexer";
+import { unsupported } from "./types";
+import type { DocumentSnapshot, ExpressionTarget, InsertionAnchor, Unsupported } from "./types";
 
 /** 单条语句允许跨越的最大行数, 防止未闭合语法把扫描拖到文件末尾. */
 const MAX_STATEMENT_LINES = 50;
 
 export type ScanConfig = {
-  commentPrefix: string;
-  /** 本语言的字符串定界符. Rust 只有 `"`, 否则生命周期 `'a` 会被当成字符串开头. */
-  stringDelimiters: readonly string[];
-  /** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
-  blockComment?: { open: string; close: string };
-  /**
-   * 语法上不能容纳语句的块的开启关键字, 例如 `switch` 的 case block 与 `class` 的 body.
-   *
-   * 命中时日志插到该语句**之前**一行: `switch` 的判别式与 `extends` 的基类都在进入该语句
-   * 之前就已求值, 所以那个位置的语义是对的; 插进块里则是语法错误.
-   */
-  restrictedBlockKeywords?: readonly string[];
-  /**
-   * 块的语法形态, 默认花括号.
-   *
-   * `colon-indent` 是 Python: 行尾 `:` 开块, 块体靠缩进. `keyword` 是 Ruby / Lua / Elixir:
-   * 靠 `do` / `then` 或行首关键字开块, 用 `end` 收尾.
-   */
-  blockStyle?: 'brace' | 'colon-indent' | 'keyword';
-  /** `keyword` 形态下能开块的行首关键字. */
-  blockOpenKeywords?: readonly string[];
+	commentPrefix: string;
+	/** 本语言的字符串定界符. Rust 只有 `"`, 否则生命周期 `'a` 会被当成字符串开头. */
+	stringDelimiters: readonly string[];
+	/** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
+	blockComment?: { open: string; close: string };
+	/**
+	 * 语法上不能容纳语句的块的开启关键字, 例如 `switch` 的 case block 与 `class` 的 body.
+	 *
+	 * 命中时日志插到该语句**之前**一行: `switch` 的判别式与 `extends` 的基类都在进入该语句
+	 * 之前就已求值, 所以那个位置的语义是对的; 插进块里则是语法错误.
+	 */
+	restrictedBlockKeywords?: readonly string[];
+	/**
+	 * 块的语法形态, 默认花括号.
+	 *
+	 * `colon-indent` 是 Python: 行尾 `:` 开块, 块体靠缩进. `keyword` 是 Ruby / Lua / Elixir:
+	 * 靠 `do` / `then` 或行首关键字开块, 用 `end` 收尾.
+	 */
+	blockStyle?: "brace" | "colon-indent" | "keyword";
+	/** `keyword` 形态下能开块的行首关键字. */
+	blockOpenKeywords?: readonly string[];
 };
 
 export const toLexConfig = (config: ScanConfig): LexConfig => ({
-  lineComment: config.commentPrefix,
-  stringDelimiters: config.stringDelimiters,
-  blockComment: config.blockComment
+	lineComment: config.commentPrefix,
+	stringDelimiters: config.stringDelimiters,
+	blockComment: config.blockComment,
 });
 
 const leadingWhitespace = (text: string): string => /^[ \t]*/.exec(text)![0];
@@ -53,12 +53,12 @@ const leadingWhitespace = (text: string): string => /^[ \t]*/.exec(text)![0];
  * 日志被插进字符串或注释里.
  */
 export function classifyOffset(
-  snapshot: DocumentSnapshot,
-  offset: number,
-  config: ScanConfig
-): 'code' | 'comment' | 'string' {
-  const lexConfig = toLexConfig(config);
-  return classifyAt(snapshot, offset, scanDocument(snapshot, lexConfig), lexConfig);
+	snapshot: DocumentSnapshot,
+	offset: number,
+	config: ScanConfig
+): "code" | "comment" | "string" {
+	const lexConfig = toLexConfig(config);
+	return classifyAt(snapshot, offset, scanDocument(snapshot, lexConfig), lexConfig);
 }
 
 /**
@@ -68,12 +68,12 @@ export function classifyOffset(
  * 括号, 方括号与对象字面量都必须闭合, 否则日志会插到它们中间.
  */
 function keptDepth(stack: readonly OpenDelimiter[]): number {
-  for (let i = stack.length - 1; i >= 0; i--) {
-    if (stack[i].kind === 'brace-block') {
-      return i + 1;
-    }
-  }
-  return 0;
+	for (let i = stack.length - 1; i >= 0; i--) {
+		if (stack[i].kind === "brace-block") {
+			return i + 1;
+		}
+	}
+	return 0;
 }
 
 /**
@@ -85,13 +85,13 @@ function keptDepth(stack: readonly OpenDelimiter[]): number {
  * 每个带 `.type` 的条件头都会被误判成受限块.
  */
 function isRestrictedBlock(headerCode: string, keywords: readonly string[] | undefined): boolean {
-  if (keywords === undefined || keywords.length === 0) {
-    return false;
-  }
-  // 返回类型注解不参与匹配: `(): { type: string } {` 里的 `type` 是属性名, 不是 TS 的 `type` 声明.
-  const typeStart = returnTypeStart(headerCode);
-  const code = typeStart === null ? headerCode : headerCode.slice(0, typeStart);
-  return new RegExp(`(^|[\\s(;{,=])(${keywords.join('|')})([^\\w$]|$)`).test(code);
+	if (keywords === undefined || keywords.length === 0) {
+		return false;
+	}
+	// 返回类型注解不参与匹配: `(): { type: string } {` 里的 `type` 是属性名, 不是 TS 的 `type` 声明.
+	const typeStart = returnTypeStart(headerCode);
+	const code = typeStart === null ? headerCode : headerCode.slice(0, typeStart);
+	return new RegExp(`(^|[\\s(;{,=])(${keywords.join("|")})([^\\w$]|$)`).test(code);
 }
 
 /**
@@ -102,28 +102,28 @@ function isRestrictedBlock(headerCode: string, keywords: readonly string[] | und
  * Elixir 的 `def f(v), do: v` 与 Ruby 的 endless method `def f(v) = v`, 它们没有块体.
  */
 function opensStyleBlock(code: string, config: ScanConfig): boolean {
-  const trimmed = code.trim();
-  if (trimmed === '') {
-    return false;
-  }
-  if (config.blockStyle === 'colon-indent') {
-    return trimmed.endsWith(':');
-  }
-  if (config.blockStyle !== 'keyword') {
-    return false;
-  }
-  if (/(^|[^\w?!])do:/.test(trimmed)) {
-    return false;
-  }
-  if (/^def\b[^=]*=/.test(trimmed)) {
-    return false;
-  }
-  // `... do`, `... do |item|`, `... then` 都是块开始.
-  if (/\bdo(\s*\|[^|]*\|)?$/.test(trimmed) || /\bthen$/.test(trimmed)) {
-    return true;
-  }
-  const first = /^([A-Za-z_][\w?!]*)/.exec(trimmed)?.[1];
-  return first !== undefined && (config.blockOpenKeywords ?? []).includes(first);
+	const trimmed = code.trim();
+	if (trimmed === "") {
+		return false;
+	}
+	if (config.blockStyle === "colon-indent") {
+		return trimmed.endsWith(":");
+	}
+	if (config.blockStyle !== "keyword") {
+		return false;
+	}
+	if (/(^|[^\w?!])do:/.test(trimmed)) {
+		return false;
+	}
+	if (/^def\b[^=]*=/.test(trimmed)) {
+		return false;
+	}
+	// `... do`, `... do |item|`, `... then` 都是块开始.
+	if (/\bdo(\s*\|[^|]*\|)?$/.test(trimmed) || /\bthen$/.test(trimmed)) {
+		return true;
+	}
+	const first = /^([A-Za-z_][\w?!]*)/.exec(trimmed)?.[1];
+	return first !== undefined && (config.blockOpenKeywords ?? []).includes(first);
 }
 
 /**
@@ -134,14 +134,14 @@ function opensStyleBlock(code: string, config: ScanConfig): boolean {
  * 抄它的缩进会得到与块头相同的缩进, 在 Python 下就是 IndentationError.
  */
 function blockIndent(snapshot: DocumentSnapshot, anchorLine: number, blockLine: number): string {
-  if (anchorLine + 1 < snapshot.lineCount) {
-    const next = snapshot.lineAt(anchorLine + 1);
-    const trimmed = next.text.trim();
-    if (trimmed !== '' && !/^[)\]}]/.test(trimmed) && trimmed !== 'end') {
-      return leadingWhitespace(next.text);
-    }
-  }
-  return leadingWhitespace(snapshot.lineAt(blockLine).text) + snapshot.indentUnit;
+	if (anchorLine + 1 < snapshot.lineCount) {
+		const next = snapshot.lineAt(anchorLine + 1);
+		const trimmed = next.text.trim();
+		if (trimmed !== "" && !/^[)\]}]/.test(trimmed) && trimmed !== "end") {
+			return leadingWhitespace(next.text);
+		}
+	}
+	return leadingWhitespace(snapshot.lineAt(blockLine).text) + snapshot.indentUnit;
 }
 
 /**
@@ -160,103 +160,118 @@ function blockIndent(snapshot: DocumentSnapshot, anchorLine: number, blockLine: 
  * `});` 之外, 而 `item` 在那里根本不在作用域内.
  */
 export function locateAnchor(
-  snapshot: DocumentSnapshot,
-  target: ExpressionTarget,
-  config: ScanConfig
+	snapshot: DocumentSnapshot,
+	target: ExpressionTarget,
+	config: ScanConfig
 ): InsertionAnchor | Unsupported {
-  const lexConfig = toLexConfig(config);
-  const states = scanDocument(snapshot, lexConfig);
+	const lexConfig = toLexConfig(config);
+	const states = scanDocument(snapshot, lexConfig);
 
-  const classification = classifyAt(snapshot, target.sourceRange.start, states, lexConfig);
-  if (classification === 'comment') {
-    return unsupported('cursor-in-comment');
-  }
-  if (classification === 'string') {
-    return unsupported('cursor-in-string');
-  }
+	const classification = classifyAt(snapshot, target.sourceRange.start, states, lexConfig);
+	if (classification === "comment") {
+		return unsupported("cursor-in-comment");
+	}
+	if (classification === "string") {
+		return unsupported("cursor-in-string");
+	}
 
-  const entryStack = states[target.sourceLine].stack;
-  const kept = keptDepth(entryStack);
-  /**
-   * 语句首行的缩进.
-   *
-   * 取"最外层还需要闭合的定界符"所在的行, 而不是目标所在的行: 目标落在多行调用的某个参数上时,
-   * 那一行是缩进过的, 拿它的缩进会让日志与 `);` 对不齐. 目标行本身就是语句首行时两者相同,
-   * 因此"缩进跟随目标行"的既有行为没有改变.
-   */
-  const statementIndent = leadingWhitespace(
-    snapshot.lineAt(entryStack[kept]?.line ?? target.sourceLine).text
-  );
-  const lastLine = Math.min(target.sourceLine + MAX_STATEMENT_LINES, snapshot.lineCount) - 1;
+	const entryStack = states[target.sourceLine].stack;
+	const kept = keptDepth(entryStack);
+	/**
+	 * 语句首行的缩进.
+	 *
+	 * 取"最外层还需要闭合的定界符"所在的行, 而不是目标所在的行: 目标落在多行调用的某个参数上时,
+	 * 那一行是缩进过的, 拿它的缩进会让日志与 `);` 对不齐. 目标行本身就是语句首行时两者相同,
+	 * 因此"缩进跟随目标行"的既有行为没有改变.
+	 */
+	const statementIndent = leadingWhitespace(
+		snapshot.lineAt(entryStack[kept]?.line ?? target.sourceLine).text
+	);
+	const lastLine = Math.min(target.sourceLine + MAX_STATEMENT_LINES, snapshot.lineCount) - 1;
 
-  for (let index = target.sourceLine; index <= lastLine; index++) {
-    const line = snapshot.lineAt(index);
-    const exit: LexState = states[index + 1];
+	for (let index = target.sourceLine; index <= lastLine; index++) {
+		const line = snapshot.lineAt(index);
+		const exit: LexState = states[index + 1];
 
-    // 弹出了目标所在的块 —— 只可能出现在语法残缺的文件里. 就地收尾, 不继续向下扫,
-    // 否则会一路扫到 MAX_STATEMENT_LINES 然后报"找不到安全位置".
-    if (exit.stack.length < kept) {
-      return { kind: 'anchor', line: index, offset: line.end, indent: statementIndent, placement: 'after-line' };
-    }
+		// 弹出了目标所在的块 —— 只可能出现在语法残缺的文件里. 就地收尾, 不继续向下扫,
+		// 否则会一路扫到 MAX_STATEMENT_LINES 然后报"找不到安全位置".
+		if (exit.stack.length < kept) {
+			return {
+				kind: "anchor",
+				line: index,
+				offset: line.end,
+				indent: statementIndent,
+				placement: "after-line",
+			};
+		}
 
-    // 最内层块之上还有没闭合的括号或字面量时不能收尾.
-    const aboveInnermostBlock = exit.stack.slice(keptDepth(exit.stack));
-    if (aboveInnermostBlock.length > 0 || exit.openQuote !== null || exit.inBlockComment) {
-      continue;
-    }
+		// 最内层块之上还有没闭合的括号或字面量时不能收尾.
+		const aboveInnermostBlock = exit.stack.slice(keptDepth(exit.stack));
+		if (aboveInnermostBlock.length > 0 || exit.openQuote !== null || exit.inBlockComment) {
+			continue;
+		}
 
-    const code = stripLineComment(line.text, lexConfig);
-    const nextCode =
-      index + 1 < snapshot.lineCount ? stripLineComment(snapshot.lineAt(index + 1).text, lexConfig) : '';
-    // 块开始判定必须先于续行判定: Ruby 的 `items.each do |item|` 以 `|` 收尾, 而 `|` 是续行符,
-    // 顺序反了这行就会被当成未结束的语句, 日志被推到块外.
-    const opensStyleBlockHere = opensStyleBlock(code, config);
-    if (!opensStyleBlockHere && isContinuation(code, nextCode)) {
-      continue;
-    }
+		const code = stripLineComment(line.text, lexConfig);
+		const nextCode =
+			index + 1 < snapshot.lineCount
+				? stripLineComment(snapshot.lineAt(index + 1).text, lexConfig)
+				: "";
+		// 块开始判定必须先于续行判定: Ruby 的 `items.each do |item|` 以 `|` 收尾, 而 `|` 是续行符,
+		// 顺序反了这行就会被当成未结束的语句, 日志被推到块外.
+		const opensStyleBlockHere = opensStyleBlock(code, config);
+		if (!opensStyleBlockHere && isContinuation(code, nextCode)) {
+			continue;
+		}
 
-    /** 块里放不了语句, 只能把日志放到这条语句之前. */
-    const beforeLine = (at: number): InsertionAnchor => {
-      const header = snapshot.lineAt(at);
-      return {
-        kind: 'anchor',
-        line: at,
-        offset: header.start,
-        indent: leadingWhitespace(header.text),
-        placement: 'before-line'
-      };
-    };
-    const afterLine = (indent: string): InsertionAnchor => ({
-      kind: 'anchor',
-      line: index,
-      offset: line.end,
-      indent,
-      placement: 'after-line'
-    });
+		/** 块里放不了语句, 只能把日志放到这条语句之前. */
+		const beforeLine = (at: number): InsertionAnchor => {
+			const header = snapshot.lineAt(at);
+			return {
+				kind: "anchor",
+				line: at,
+				offset: header.start,
+				indent: leadingWhitespace(header.text),
+				placement: "before-line",
+			};
+		};
+		const afterLine = (indent: string): InsertionAnchor => ({
+			kind: "anchor",
+			line: index,
+			offset: line.end,
+			indent,
+			placement: "after-line",
+		});
 
-    const innermost = exit.stack[exit.stack.length - 1];
-    // 块是在目标行或其后新开的 —— 那才说明目标行开启了一个块, 日志要落进去.
-    const opensBraceBlock =
-      innermost !== undefined && innermost.kind === 'brace-block' && innermost.line >= target.sourceLine;
+		const innermost = exit.stack[exit.stack.length - 1];
+		// 块是在目标行或其后新开的 —— 那才说明目标行开启了一个块, 日志要落进去.
+		const opensBraceBlock =
+			innermost !== undefined &&
+			innermost.kind === "brace-block" &&
+			innermost.line >= target.sourceLine;
 
-    if (opensBraceBlock) {
-      // 关键字要从 `{` 往回找: Allman 风格下 `switch (x)` 与 `{` 不在同一行, 插错位置会把
-      // 日志夹在两者之间.
-      const header = codeBeforeDelimiter(snapshot, lexConfig, innermost.line, innermost.column);
-      return isRestrictedBlock(header.code, config.restrictedBlockKeywords)
-        ? beforeLine(header.line)
-        : afterLine(blockIndent(snapshot, index, innermost.line));
-    }
+		if (opensBraceBlock) {
+			// 关键字要从 `{` 往回找: Allman 风格下 `switch (x)` 与 `{` 不在同一行, 插错位置会把
+			// 日志夹在两者之间.
+			const header = codeBeforeDelimiter(
+				snapshot,
+				lexConfig,
+				innermost.line,
+				innermost.column
+			);
+			return isRestrictedBlock(header.code, config.restrictedBlockKeywords)
+				? beforeLine(header.line)
+				: afterLine(blockIndent(snapshot, index, innermost.line));
+		}
 
-    // 缩进型与关键字型语言的块头就是收尾这一行本身.
-    if (opensStyleBlockHere) {
-      return isRestrictedBlock(code, config.restrictedBlockKeywords)
-        ? beforeLine(index)
-        : afterLine(blockIndent(snapshot, index, index));
-    }
+		// 缩进型与关键字型语言的块头就是收尾这一行本身.
+		if (opensStyleBlockHere) {
+			return isRestrictedBlock(code, config.restrictedBlockKeywords)
+				? beforeLine(index)
+				: afterLine(blockIndent(snapshot, index, index));
+		}
 
-    return afterLine(statementIndent);
-  }
+		return afterLine(statementIndent);
+	}
 
-  return unsupported('unbalanced-syntax');
+	return unsupported("unbalanced-syntax");
 }
