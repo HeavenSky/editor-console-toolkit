@@ -29,6 +29,8 @@ export interface PortsView extends vscode.Disposable {
 	getSearch(): string;
 	getCheckedTargets(): CheckedTarget[];
 	clearChecked(): void;
+	expandAll(): void;
+	collapseAll(): void;
 }
 
 const CONFIG_SECTION = "editorConsoleToolkit.ports";
@@ -64,6 +66,12 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
 	let protectedPids: ReadonlySet<number> = new Set<number>();
 	let timer: ReturnType<typeof setInterval> | undefined;
 	let scanning = false;
+	/**
+	 * 全部展开/收起没有现成 API: 编辑器按节点 id 记住展开态, 所以换一代 id 让它丢掉旧状态,
+	 * 改用这里给的初始折叠态。同一代内 id 按 PID 保持稳定, 轮询刷新不会打乱用户手动展开的行。
+	 */
+	let expandGeneration = 0;
+	let expandAllRows = false;
 
 	const home = homedir();
 	const currentUser = (() => {
@@ -106,19 +114,22 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
 
 			return [
 				createSearchItem({ search, shown: visible.length, total }),
-				...visible.map(entry =>
-					createProcessItem(entry, {
+				...visible.map((entry, index) => {
+					const item = createProcessItem(entry, {
 						home,
 						checked: entry.pid !== null && checked.has(entry.pid),
-					})
-				),
+					});
+					item.id = `${expandGeneration}/${entry.pid ?? `?${index}`}`;
+					if (expandAllRows)
+						item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+					return item;
+				}),
 			];
 		},
 	};
 
 	const view = vscode.window.createTreeView("editorConsoleToolkit.ports.view", {
 		treeDataProvider: provider,
-		showCollapseAll: true,
 		manageCheckboxStateManually: true,
 	});
 
@@ -203,6 +214,16 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
 		getCheckedTargets: () => [...checked.values()],
 		clearChecked: () => {
 			checked.clear();
+			changeEmitter.fire();
+		},
+		expandAll: () => {
+			expandGeneration++;
+			expandAllRows = true;
+			changeEmitter.fire();
+		},
+		collapseAll: () => {
+			expandGeneration++;
+			expandAllRows = false;
 			changeEmitter.fire();
 		},
 		dispose: () => {

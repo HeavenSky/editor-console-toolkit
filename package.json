@@ -102,6 +102,18 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "editorConsoleToolkit.ports.expandAll",
+				"title": "%command.ports.expandAll%",
+				"category": "%category.ports%",
+				"icon": "$(expand-all)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.collapseAll",
+				"title": "%command.ports.collapseAll%",
+				"category": "%category.ports%",
+				"icon": "$(collapse-all)"
+			},
+			{
 				"command": "editorConsoleToolkit.ports.killSelected",
 				"title": "%command.ports.killSelected%",
 				"category": "%category.ports%",
@@ -116,8 +128,19 @@
 			{
 				"command": "editorConsoleToolkit.ports.toggleSystemProcesses",
 				"title": "%command.ports.toggleSystemProcesses%",
+				"category": "%category.ports%"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.showSystemProcesses",
+				"title": "%command.ports.showSystemProcesses%",
 				"category": "%category.ports%",
-				"icon": "$(filter)"
+				"icon": "$(eye)"
+			},
+			{
+				"command": "editorConsoleToolkit.ports.hideSystemProcesses",
+				"title": "%command.ports.hideSystemProcesses%",
+				"category": "%category.ports%",
+				"icon": "$(eye-closed)"
 			},
 			{
 				"command": "editorConsoleToolkit.ports.search",
@@ -179,23 +202,46 @@
 				{
 					"command": "editorConsoleToolkit.ports.clearSearch",
 					"when": "false"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.showSystemProcesses",
+					"when": "false"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.hideSystemProcesses",
+					"when": "false"
 				}
 			],
 			"view/title": [
 				{
-					"command": "editorConsoleToolkit.ports.killSelected",
-					"when": "view == editorConsoleToolkit.ports.view",
+					"command": "editorConsoleToolkit.ports.showSystemProcesses",
+					"when": "view == editorConsoleToolkit.ports.view && config.editorConsoleToolkit.ports.hideSystemProcesses",
 					"group": "navigation@1"
 				},
 				{
-					"command": "editorConsoleToolkit.ports.toggleSystemProcesses",
+					"command": "editorConsoleToolkit.ports.hideSystemProcesses",
+					"when": "view == editorConsoleToolkit.ports.view && !config.editorConsoleToolkit.ports.hideSystemProcesses",
+					"group": "navigation@1"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.expandAll",
 					"when": "view == editorConsoleToolkit.ports.view",
 					"group": "navigation@2"
 				},
 				{
-					"command": "editorConsoleToolkit.ports.refresh",
+					"command": "editorConsoleToolkit.ports.collapseAll",
 					"when": "view == editorConsoleToolkit.ports.view",
 					"group": "navigation@3"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.refresh",
+					"when": "view == editorConsoleToolkit.ports.view",
+					"group": "navigation@4"
+				},
+				{
+					"command": "editorConsoleToolkit.ports.killSelected",
+					"when": "view == editorConsoleToolkit.ports.view",
+					"group": "navigation@5"
 				}
 			],
 			"view/item/context": [

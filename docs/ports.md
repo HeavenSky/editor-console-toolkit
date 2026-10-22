@@ -22,7 +22,7 @@ PORT TOOLKIT                                  🗑  ⧩  ⟳
   🔒 Code Helper         6001  ·  the editor itself
 ```
 
-The title bar holds Kill Checked Processes (trash icon), Toggle System Processes (filter icon) and Refresh Ports (refresh icon). None of the Port Toolkit commands has a default key.
+The title bar holds, from left to right: Show System Processes (eye icon, while they are hidden) or Hide System Processes (crossed-out eye icon, while they are shown), Expand All Processes, Collapse All Processes, Refresh Ports (refresh icon) and Kill Checked Processes (trash icon). None of the Port Toolkit commands has a default key.
 
 ## Tell processes apart
 

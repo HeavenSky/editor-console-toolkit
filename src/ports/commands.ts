@@ -30,6 +30,13 @@ function killTimeout(): number {
 	return vscode.workspace.getConfiguration(CONFIG_SECTION).get<number>("killTimeout", 3000);
 }
 
+/** 写进配置而不是只改内存态: 这样设置界面看得见, 重载窗口后仍然保持, 标题栏按钮也能据此切换图标。 */
+async function setSystemProcessesHidden(hidden: boolean): Promise<void> {
+	await vscode.workspace
+		.getConfiguration(CONFIG_SECTION)
+		.update("hideSystemProcesses", hidden, vscode.ConfigurationTarget.Global);
+}
+
 function describe(targets: CheckedTarget[]): string {
 	return targets.map(target => `${target.name} (${target.pid})`).join(", ");
 }
@@ -107,6 +114,13 @@ export function registerPortCommands(context: vscode.ExtensionContext, view: Por
 			view.refresh();
 		}),
 
+		vscode.commands.registerCommand("editorConsoleToolkit.ports.expandAll", () => {
+			view.expandAll();
+		}),
+		vscode.commands.registerCommand("editorConsoleToolkit.ports.collapseAll", () => {
+			view.collapseAll();
+		}),
+
 		vscode.commands.registerCommand("editorConsoleToolkit.ports.killSelected", () =>
 			runKill(view.getCheckedTargets(), view)
 		),
@@ -125,18 +139,17 @@ export function registerPortCommands(context: vscode.ExtensionContext, view: Por
 			);
 		}),
 
-		vscode.commands.registerCommand(
-			"editorConsoleToolkit.ports.toggleSystemProcesses",
-			async () => {
-				// 写进配置而不是只改内存态: 这样设置界面看得见, 且重载窗口后仍然保持。
-				const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-				const hidden = config.get<boolean>("hideSystemProcesses", true);
-				await config.update(
-					"hideSystemProcesses",
-					!hidden,
-					vscode.ConfigurationTarget.Global
-				);
-			}
+		vscode.commands.registerCommand("editorConsoleToolkit.ports.toggleSystemProcesses", () => {
+			const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+			return setSystemProcessesHidden(!config.get<boolean>("hideSystemProcesses", true));
+		}),
+
+		// 标题栏按当前状态只露出其中一个, 图标与标题都表示点击后的动作。
+		vscode.commands.registerCommand("editorConsoleToolkit.ports.showSystemProcesses", () =>
+			setSystemProcessesHidden(false)
+		),
+		vscode.commands.registerCommand("editorConsoleToolkit.ports.hideSystemProcesses", () =>
+			setSystemProcessesHidden(true)
 		),
 
 		vscode.commands.registerCommand("editorConsoleToolkit.ports.search", () => {
