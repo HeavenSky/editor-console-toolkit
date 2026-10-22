@@ -15,11 +15,11 @@
 ```js
 // 执行前
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 
 // 执行一次「切换全部 Console 日志」之后
 const user = getUser();
-// console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+// console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 ```
 
 文件里有的日志已注释、有的没有时，第一次执行会把剩下的也注释掉，让整个文件保持一致。文件里没有生成的日志时，只弹出提示，不做任何改动。

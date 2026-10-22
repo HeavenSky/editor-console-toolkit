@@ -21,7 +21,7 @@
 
 ```js
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 ```
 
 ## 一键给光标处的表达式加日志

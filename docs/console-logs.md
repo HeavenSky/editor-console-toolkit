@@ -15,11 +15,11 @@ All three are in the Command Palette under `Console Toolkit`; only Insert Consol
 ```js
 // before
 const user = getUser();
-console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 
 // after one run of Toggle All Console Logs
 const user = getUser();
-// console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
+// console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 ```
 
 When some logs are commented and others are not, the first run comments out the rest so the file ends up consistent. A file with no generated logs is left unchanged with a warning.
