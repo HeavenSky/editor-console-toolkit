@@ -10,6 +10,7 @@ Pick the page for what you want to do. For what the extension is and the shortes
 | Insert, toggle and clean up debug logs, change the prefix or keys | [Insert and clean up debug logs](./console-logs.md)    |
 | Find and stop the process holding a port                          | [Find and stop processes on your ports](./ports.md)    |
 | Remove the "installation appears to be corrupt" warning           | [Fix the corrupt-installation warning](./checksums.md) |
+| Clear editor history and caches, or delete Local History          | [Clear editor history and caches](./cleanup.md)        |
 | Look up an error message                                          | [Troubleshooting](./troubleshooting.md)                |
 | Check what runs in the background and what leaves the machine     | [Check what runs on your machine](./privacy.md)        |
 | Build, test or package the extension                              | [Build from source](./development.md)                  |

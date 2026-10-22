@@ -1,5 +1,5 @@
 {
-	"extension.description": "一个快捷键给光标处的表达式加上调试日志, 提交前一条命令全部关掉; 停掉占着开发端口的进程; 消掉改过编辑器文件后出现的 \"安装似乎已损坏\" 警告.",
+	"extension.description": "一个快捷键给光标处的表达式加上调试日志, 提交前一条命令全部关掉; 停掉占着开发端口的进程; 消掉改过编辑器文件后出现的 \"安装似乎已损坏\" 警告; 一次清掉编辑器的历史与缓存.",
 	"category": "控制台工具箱",
 	"command.insertConsoleLog": "插入 Console 日志",
 	"command.toggleConsoleLog": "切换 Console 日志",
@@ -21,5 +21,8 @@
 	"config.ports.includeUdp": "同时列出 UDP 端点, 而不只是 TCP 监听端口.",
 	"category.checksums": "校验和工具箱",
 	"command.checksums.apply": "修复校验和",
-	"command.checksums.restore": "还原校验和"
+	"command.checksums.restore": "还原校验和",
+	"category.cleanup": "清理工具箱",
+	"command.cleanup.clearHistory": "清理历史与缓存",
+	"command.cleanup.deleteWorkData": "删除工作数据..."
 }

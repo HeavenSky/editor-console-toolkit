@@ -3,6 +3,7 @@
 //   console-log      Console Toolkit: 插入的日志与注释掉的日志
 //   ports            Port Toolkit: 工作区里启动的两个服务, 展开一行看详情
 //   checksums        Checksum Toolkit: 命令面板里的两个命令
+//   cleanup          Cleanup Toolkit: 清理历史与缓存的确认框, 列出将清理的条目
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,7 +69,8 @@ const h = await launch({
 		);
 		gitInit(ws);
 	},
-	settings: { "editorConsoleToolkit.ports.refreshInterval": 0 },
+	// 确认框用自绘样式, 原生对话框截不进窗口画面
+	settings: { "editorConsoleToolkit.ports.refreshInterval": 0, "window.dialogStyle": "custom" },
 });
 const { page } = h;
 
@@ -119,6 +121,12 @@ try {
 	if (h.want("checksums")) {
 		await h.palette("Checksum Toolkit", 1200);
 		await h.shot("checksums", { clip: page.locator(".quick-input-widget"), pad: 4 });
+		await h.escape();
+	}
+
+	if (h.want("cleanup")) {
+		await h.command("Cleanup Toolkit: Clear History and Caches", 1500);
+		await h.shot("cleanup", { clip: page.locator(".monaco-dialog-box"), pad: 4 });
 		await h.escape();
 	}
 } finally {

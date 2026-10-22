@@ -1,5 +1,5 @@
 {
-	"extension.description": "Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, and silence the editor's \"installation appears to be corrupt\" warning.",
+	"extension.description": "Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, silence the editor's \"installation appears to be corrupt\" warning, and clear the editor's history and caches in one go.",
 	"category": "Console Toolkit",
 	"command.insertConsoleLog": "Insert Console Log",
 	"command.toggleConsoleLog": "Toggle Console Log",
@@ -21,5 +21,8 @@
 	"config.ports.includeUdp": "Also list UDP endpoints, not just TCP listeners.",
 	"category.checksums": "Checksum Toolkit",
 	"command.checksums.apply": "Fix Checksums",
-	"command.checksums.restore": "Restore Checksums"
+	"command.checksums.restore": "Restore Checksums",
+	"category.cleanup": "Cleanup Toolkit",
+	"command.cleanup.clearHistory": "Clear History and Caches",
+	"command.cleanup.deleteWorkData": "Delete Work Data..."
 }

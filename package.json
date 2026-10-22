@@ -8,7 +8,9 @@
 		"Other"
 	],
 	"keywords": [
+		"cache",
 		"checksum",
+		"clear history",
 		"console",
 		"debug",
 		"developer tools",
@@ -138,6 +140,16 @@
 				"command": "editorConsoleToolkit.checksums.restore",
 				"title": "%command.checksums.restore%",
 				"category": "%category.checksums%"
+			},
+			{
+				"command": "editorConsoleToolkit.cleanup.clearHistory",
+				"title": "%command.cleanup.clearHistory%",
+				"category": "%category.cleanup%"
+			},
+			{
+				"command": "editorConsoleToolkit.cleanup.deleteWorkData",
+				"title": "%command.cleanup.deleteWorkData%",
+				"category": "%category.cleanup%"
 			}
 		],
 		"viewsContainers": {

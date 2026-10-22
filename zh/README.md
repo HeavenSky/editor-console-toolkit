@@ -4,7 +4,7 @@
 
 > 插件市场页只显示英文版 README；插件界面会跟随 VS Code 的显示语言切换为中文。
 
-一个快捷键给光标处的表达式加上调试日志，提交前一条命令全部关掉；停掉占着开发端口的进程；消掉改过编辑器文件后出现的「安装似乎已损坏」警告。
+一个快捷键给光标处的表达式加上调试日志，提交前一条命令全部关掉；停掉占着开发端口的进程；消掉改过编辑器文件后出现的「安装似乎已损坏」警告；一次清掉编辑器的历史与缓存。
 
 [![VS Marketplace](https://vsmarketplacebadges.dev/version-short/HeavenSky.editor-console-toolkit.svg?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![Installs](https://vsmarketplacebadges.dev/installs-short/HeavenSky.editor-console-toolkit.svg)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
@@ -45,6 +45,12 @@ console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
 改过编辑器自身的文件后，执行「校验和工具箱：修复校验和」，它会重写 `product.json` 里的校验和，完全重启编辑器后警告消失。它会留一份备份供「还原校验和」使用，也从不向你要密码。详见[修复安装已损坏警告](./docs/checksums.md)。
 
 ![命令面板中的校验和工具箱命令](../media/screenshots/checksums.png)
+
+## 一次清掉编辑器的历史与缓存
+
+执行「清理工具箱：清理历史与缓存」并确认一次，它会调用编辑器自带的清理命令，清掉命令面板记录、最近打开的文件、搜索与终端历史、内置浏览器存储等。「删除工作数据...」先让你取消勾选想保留的项，再删除本地历史或聊天会话。详见[清理编辑器的历史与缓存](./docs/cleanup.md)。
+
+![「清理历史与缓存」的确认框，列出将要清理的条目](../media/screenshots/cleanup.png)
 
 ## 不适合的场景
 

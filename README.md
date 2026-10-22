@@ -2,7 +2,7 @@
 
 **English** · [简体中文](./zh/README.md)
 
-Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, and silence the editor's "installation appears to be corrupt" warning.
+Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, silence the editor's "installation appears to be corrupt" warning, and clear the editor's history and caches in one go.
 
 [![VS Marketplace](https://vsmarketplacebadges.dev/version-short/HeavenSky.editor-console-toolkit.svg?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![Installs](https://vsmarketplacebadges.dev/installs-short/HeavenSky.editor-console-toolkit.svg)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
@@ -43,6 +43,12 @@ The Port Toolkit view in the Activity Bar lists one row per listening process, w
 After you patch the editor's own files, Checksum Toolkit: Fix Checksums rewrites the checksums in `product.json` so the warning goes away after a full restart. It keeps a backup for Restore Checksums and never asks for your password. See [Fix the corrupt-installation warning](./docs/checksums.md).
 
 ![Checksum Toolkit commands in the Command Palette](./media/screenshots/checksums.png)
+
+## Clear editor history and caches in one go
+
+Cleanup Toolkit: Clear History and Caches runs the editor's own clear commands for Command Palette history, recent files, search and terminal history, built-in browser storage and more, after one confirmation. Delete Work Data... lets you uncheck what to keep before deleting Local History or chat sessions. See [Clear editor history and caches](./docs/cleanup.md).
+
+![Clear History and Caches confirmation listing everything it will clear](./media/screenshots/cleanup.png)
 
 ## When not to use it
 

@@ -10,3 +10,4 @@ This page lists what the extension does in the background, so you can decide whe
 - Console Toolkit runs only when you invoke a command: no listeners, no timers, no status bar item. A repository check rejects any change that adds one.
 - Port Toolkit scans only while its view is visible, using `lsof`, `ss`, `netstat` or PowerShell that ship with the OS.
 - Checksum Toolkit touches the disk only when you run it, and writes nothing outside the editor's installation folder and your temporary folder.
+- Cleanup Toolkit runs only when you invoke it and deletes nothing by itself: it calls commands that the editor and your extensions already provide. One of them, Cloud Edit Sessions in Delete Work Data, deletes data stored online; uncheck it to keep that data.
