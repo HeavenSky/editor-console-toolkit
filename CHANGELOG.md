@@ -4,14 +4,14 @@
 
 ## v0.0.9 2026-10-23 Port Toolkit title bar
 
+### Added
+
+- **Expand All Processes** (`editorConsoleToolkit.ports.expandAll`) opens every process row in one click; **Collapse All Processes** (`editorConsoleToolkit.ports.collapseAll`) replaces the editor's built-in collapse button.
+
 ### Changed
 
 - **Showing or hiding system processes is now an eye button** in the Port Toolkit title bar instead of the filter icon: an eye (Show System Processes) while they are hidden, a crossed-out eye (Hide System Processes) while they are shown. Toggle System Processes is still in the Command Palette.
 - The title bar buttons now read, left to right: show/hide system processes, expand all, collapse all, refresh, kill checked processes ([title bar](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/ports.md#open-the-view)).
-
-### Added
-
-- **Expand All Processes** (`editorConsoleToolkit.ports.expandAll`) opens every process row in one click; **Collapse All Processes** (`editorConsoleToolkit.ports.collapseAll`) replaces the editor's built-in collapse button.
 
 ## v0.0.8 2026-10-22 Cleanup Toolkit
 

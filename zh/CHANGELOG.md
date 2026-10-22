@@ -4,14 +4,14 @@
 
 ## v0.0.9 2026-10-23 端口工具箱标题栏
 
+### 新增
+
+- **「展开全部进程」**（`editorConsoleToolkit.ports.expandAll`）一键展开所有进程行；**「收起全部进程」**（`editorConsoleToolkit.ports.collapseAll`）取代编辑器自带的收起按钮。
+
 ### 变更
 
 - **显示或隐藏系统进程改为眼睛按钮**，替换端口工具箱标题栏上原来的漏斗图标：系统进程隐藏时显示眼睛（「显示系统进程」），显示时显示划掉的眼睛（「隐藏系统进程」）。命令面板里的「切换系统进程的显示」照常可用。
 - 标题栏按钮从左到右依次是：显示/隐藏系统进程、全部展开、全部收起、刷新、终止已勾选的进程（[标题栏](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/ports.md#打开视图)）。
-
-### 新增
-
-- **「展开全部进程」**（`editorConsoleToolkit.ports.expandAll`）一键展开所有进程行；**「收起全部进程」**（`editorConsoleToolkit.ports.collapseAll`）取代编辑器自带的收起按钮。
 
 ## v0.0.8 2026-10-22 清理工具箱
 
