@@ -9,7 +9,7 @@ This page shows how to find the process that holds a local port, tell it apart f
 Click the Port Toolkit icon in the Activity Bar. The view lists every process listening on a local port, **one row per process, not one row per port**, so the number of rows you tick is always the number of processes that get terminated. The sketch below shows the layout; the real view draws VS Code's own icons in place of these symbols.
 
 ```text
-PORT TOOLKIT                                  🗑  ⧩  ⟳
+PORT TOOLKIT                            👁  ⊞  ⊟  ⟳  🗑
   🔍 Search                for example 3000, node, ~/repo
   ☑ node                5173, 24678  ·  this workspace
       PID: 41802  ·  PPID: 41799  ·  sky
@@ -45,7 +45,7 @@ Click the search row at the top and type; the list narrows after a short pause. 
 - While a filter is active, the search row shows the term and a match count, with a clear button next to it.
 
 ```text
-PORT TOOLKIT                                  🗑  ⧩  ⟳
+PORT TOOLKIT                            👁  ⊞  ⊟  ⟳  🗑
   🔍 Search: 3000                       2 of 7 shown  ✕
   ☑ node                3000  ·  this workspace
   ☐ java                30001

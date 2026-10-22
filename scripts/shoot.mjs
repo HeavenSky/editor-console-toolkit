@@ -108,8 +108,14 @@ try {
 		await h.command("Port Toolkit: Search Ports", 800);
 		await h.type("ect-shoot", 600);
 		await h.press("Enter", 2500);
-		// 侧栏加宽, 展开第一个进程行
-		for (let i = 0; i < 6; i++) await h.command("View: Increase Current View Size", 200);
+		// 拖动侧栏右侧的分隔条加宽到 660, 再展开第一个进程行; "Increase Current View Size" 不稳定, 有时不生效
+		const side = await page.locator(".part.sidebar").boundingBox();
+		const edge = side.x + side.width;
+		await page.mouse.move(edge, side.y + side.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(side.x + 660, side.y + side.height / 2, { steps: 10 });
+		await page.mouse.up();
+		await page.waitForTimeout(500);
 		const row = page.locator('.part.sidebar .monaco-list-row[aria-level="1"]').nth(1);
 		await row.click();
 		await h.press("ArrowRight", 1500);
