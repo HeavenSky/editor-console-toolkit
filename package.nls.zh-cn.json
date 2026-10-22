@@ -1,5 +1,5 @@
 {
-	"extension.description": "一个快捷键给光标处的表达式加上调试日志, 提交前一条命令全部关掉; 停掉占着开发端口的进程; 消掉改过编辑器文件后出现的 \"安装似乎已损坏\" 警告; 一次清掉编辑器的历史与缓存.",
+	"extension.description": "一个快捷键给光标处的表达式加上调试日志, 提交前用一条命令把它们全部关掉; 停掉占着开发端口的进程; 消掉改过编辑器文件后出现的 \"安装似乎已损坏\" 警告; 一次清掉编辑器的历史与缓存.",
 	"category": "控制台工具箱",
 	"command.insertConsoleLog": "插入 Console 日志",
 	"command.toggleConsoleLog": "切换 Console 日志",

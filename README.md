@@ -2,13 +2,13 @@
 
 **English** · [简体中文](./zh/README.md)
 
-Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, silence the editor's "installation appears to be corrupt" warning, and clear the editor's history and caches in one go.
+Log any expression in one keystroke, then switch every generated log off with one command before you commit. Stop the process holding your dev port, silence the editor's "installation appears to be corrupt" warning, and clear the editor's history and caches in one go.
 
 [![VS Marketplace](https://vsmarketplacebadges.dev/version-short/HeavenSky.editor-console-toolkit.svg?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![Installs](https://vsmarketplacebadges.dev/installs-short/HeavenSky.editor-console-toolkit.svg)](https://marketplace.visualstudio.com/items?itemName=HeavenSky.editor-console-toolkit)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.txt)
 
-This VS Code extension is for developers who debug with print statements and run several local servers at once. Unlike a snippet, a generated log knows its language and where it belongs, and carries a marker so cleanup never touches a log you wrote by hand. Unlike `lsof` and `kill` in a terminal, the port view shows each process's working directory, so you do not have to guess which PID is yours. The extension has no runtime dependencies and never goes online.
+This VS Code extension is for developers who debug with print statements, run several local servers at once, or patch and tidy up the editor itself. Unlike a snippet, a generated log knows its language and where it belongs, and carries a marker so removing or toggling logs never touches one you wrote by hand. Unlike `lsof` and `kill` in a terminal, the port view shows each process's working directory, so you do not have to guess which PID is yours. The extension has no runtime dependencies and makes no network requests of its own.
 
 ![Debug logs inserted with Alt+L in a TypeScript file](./media/screenshots/console-log.png)
 
@@ -19,40 +19,42 @@ This VS Code extension is for developers who debug with print statements and run
 
 ```js
 const user = getUser();
-console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
+console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 ```
 
 ## Log the expression under your cursor
 
-**The log lands where the value exists**: inside the block when the cursor is on a function signature or an `if` condition line, before the statement when the block cannot hold statements (such as `switch`), and after the statement otherwise. It works in 15 language IDs, from JavaScript and Python to Rust and Elixir, and with multiple cursors. Each run is one undo step, and the file is never saved or reformatted. See [Insert and clean up debug logs](./docs/console-logs.md).
+**The log lands where the value is already defined**: inside the block when the cursor is on a function signature or an `if` condition line, before the statement when the block cannot hold statements (such as `switch`), and after the statement otherwise. It supports 15 language IDs, from JavaScript and Python to Rust and Elixir, and with multiple cursors. Each run is one undo step, and the file is never saved or reformatted. See [Insert and clean up debug logs](./docs/console-logs.md).
 
 ## Switch every generated log off before you commit
 
-Console Toolkit: Toggle All Console Logs comments out every log the extension wrote in the file, and the next run brings them back. Only lines ending in the `ect:v1` marker are touched, so your own `console.log` calls stay as they are.
+Run Console Toolkit: Toggle All Console Logs and every log the extension wrote in the file is commented out; run it again to bring them back. Only lines ending in the `ect:v1` marker are touched, so your own `console.log` calls stay as they are.
 
-![Every generated log commented out by Toggle All Console Logs](./media/screenshots/console-log-toggled.png)
+![Every generated log commented out by Console Toolkit: Toggle All Console Logs](./media/screenshots/console-log-toggled.png)
 
 ## Stop the process that holds your port
 
-The Port Toolkit view in the Activity Bar lists one row per listening process, with its working directory and full command line. A `this workspace` marker tells you which of several `node` processes is yours. Tick rows and terminate them in one go; the editor's own processes cannot be ticked. See [Find and stop processes on your ports](./docs/ports.md).
+Find the process holding your port in the Port Toolkit view in the Activity Bar, tick the ones you want to stop, and terminate them in one go. The view lists one row per listening process, with its working directory and full command line; a `this workspace` marker tells you which of several `node` processes is yours. The editor's own processes cannot be ticked. See [Find and stop processes on your ports](./docs/ports.md).
 
 ![Port Toolkit view filtered to the workspace, one row expanded](./media/screenshots/ports.png)
 
 ## Silence "installation appears to be corrupt"
 
-After you patch the editor's own files, Checksum Toolkit: Fix Checksums rewrites the checksums in `product.json` so the warning goes away after a full restart. It keeps a backup for Restore Checksums and never asks for your password. See [Fix the corrupt-installation warning](./docs/checksums.md).
+After you patch the editor's own files, run Checksum Toolkit: Fix Checksums and fully restart the editor, and the warning is gone. It rewrites only the checksums in `product.json`, keeps a backup for Checksum Toolkit: Restore Checksums, and never asks for your password. See [Fix the corrupt-installation warning](./docs/checksums.md).
 
 ![Checksum Toolkit commands in the Command Palette](./media/screenshots/checksums.png)
 
 ## Clear editor history and caches in one go
 
-Cleanup Toolkit: Clear History and Caches runs the editor's own clear commands for Command Palette history, recent files, search and terminal history, built-in browser storage and more, after one confirmation. Delete Work Data... lets you uncheck what to keep before deleting Local History or chat sessions. See [Clear editor history and caches](./docs/cleanup.md).
+Run Cleanup Toolkit: Clear History and Caches and confirm the list: it calls the clear commands that the editor and your installed extensions already provide to clear Command Palette history, recent files, search and terminal history, built-in browser storage and more. Clearing Command Palette history, recent files and voice transcripts asks for one more confirmation, and clearing the built-in browser's storage signs you out of sites.
 
-![Clear History and Caches confirmation listing everything it will clear](./media/screenshots/cleanup.png)
+![Cleanup Toolkit: Clear History and Caches confirmation listing everything it will clear](./media/screenshots/cleanup.png)
+
+To delete work data instead, run Cleanup Toolkit: Delete Work Data...: uncheck what to keep, and it deletes the checked chat sessions, Local History, cloud Edit Sessions or Copilot memories for good. See [Clear editor history and caches](./docs/cleanup.md).
 
 ## When not to use it
 
-Skip it if you work mainly in Go, C, C++, shell or inside Vue and Svelte single-file components: Console Toolkit does not support them yet. For breakpoints and watch expressions, the built-in debugger is the better tool. Port Toolkit and Checksum Toolkit have been verified only on macOS so far.
+Inserting and toggling logs does not work in Go, C, C++, shell or the `<script>` blocks of Vue and Svelte files yet; the port, checksum and cleanup features do not depend on the language you write in. For breakpoints and watch expressions, the built-in debugger is the better tool. The port view and the checksum commands have been verified on real hardware only on macOS so far, and the checksum commands refuse to run in Remote windows (SSH, WSL, containers) and on the web.
 
 ## Learn more
 
@@ -62,4 +64,4 @@ Skip it if you work mainly in Go, C, C++, shell or inside Vue and Svelte single-
 
 ## License
 
-[MIT](./LICENSE.txt). Checksum Toolkit's behaviour is derived from [vscode-fix-checksums](https://github.com/RimuruChan/vscode-fix-checksums) (MIT © Jürg Lehni 2018, MIT © RimuruChan 2024); none of its code is bundled.
+[MIT](./LICENSE.txt). The checksum commands' behaviour is derived from [vscode-fix-checksums](https://github.com/RimuruChan/vscode-fix-checksums) (MIT © Jürg Lehni 2018, MIT © RimuruChan 2024); none of its code is bundled.

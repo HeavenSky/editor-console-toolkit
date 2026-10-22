@@ -15,7 +15,7 @@
 ```js
 // 执行前
 const user = getUser();
-console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
+console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 // 执行一次「切换全部 Console 日志」之后
 const user = getUser();

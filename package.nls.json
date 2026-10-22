@@ -1,5 +1,5 @@
 {
-	"extension.description": "Log any expression in one keystroke and switch every generated log off before you commit, stop the process holding your dev port, silence the editor's \"installation appears to be corrupt\" warning, and clear the editor's history and caches in one go.",
+	"extension.description": "Log any expression in one keystroke, then switch every generated log off with one command before you commit. Stop the process holding your dev port, silence the editor's \"installation appears to be corrupt\" warning, and clear the editor's history and caches in one go.",
 	"category": "Console Toolkit",
 	"command.insertConsoleLog": "Insert Console Log",
 	"command.toggleConsoleLog": "Toggle Console Log",

@@ -15,7 +15,7 @@ All three are in the Command Palette under `Console Toolkit`; only Insert Consol
 ```js
 // before
 const user = getUser();
-console.log("🎯🎯🎯 [DEBUG] user:", user); // ect:v1
+console.log('🎯🎯🎯 [DEBUG] user:', user); // ect:v1
 
 // after one run of Toggle All Console Logs
 const user = getUser();
