@@ -2,11 +2,13 @@
 
 **English** · [简体中文](./zh/CHANGELOG.md)
 
-## Unreleased
+## v0.0.8 2026-10-22 Cleanup Toolkit
+
+Adds a fourth feature area: **Cleanup Toolkit**, for clearing the editor's history, caches and work data.
 
 ### Added
 
-- **Cleanup Toolkit: Clear History and Caches** (`editorConsoleToolkit.cleanup.clearHistory`) clears up to 27 kinds of editor and extension history and caches after one confirmation, and reports how many commands ran, were skipped or failed ([what is cleared](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/cleanup.md#clear-history-and-caches)).
+- **Cleanup Toolkit: Clear History and Caches** (`editorConsoleToolkit.cleanup.clearHistory`) clears up to 27 kinds of editor and extension history and caches once you confirm the list (Command Palette history, recent files and voice transcripts ask once more), and reports how many commands ran, were skipped or failed ([what is cleared](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/cleanup.md#clear-history-and-caches)).
 - **Cleanup Toolkit: Delete Work Data...** (`editorConsoleToolkit.cleanup.deleteWorkData`) deletes the checked items among chat sessions, Local History, cloud Edit Sessions and Copilot memories and index; every item starts checked ([what is deleted](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/cleanup.md#delete-work-data)).
 
 ## v0.0.7 2026-10-16 Rewritten docs

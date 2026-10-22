@@ -1,7 +1,7 @@
 {
 	"name": "editor-console-toolkit",
 	"displayName": "Editor Console Toolkit",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"description": "%extension.description%",
 	"categories": [
 		"Debuggers",

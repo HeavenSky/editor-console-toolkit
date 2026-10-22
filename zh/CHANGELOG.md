@@ -2,11 +2,13 @@
 
 [English](../CHANGELOG.md) · **简体中文**
 
-## Unreleased
+## v0.0.8 2026-10-22 清理工具箱
+
+新增第四个功能：**清理工具箱**，用来清掉编辑器的历史、缓存与工作数据。
 
 ### 新增
 
-- **「清理工具箱：清理历史与缓存」**（`editorConsoleToolkit.cleanup.clearHistory`）：确认一次即清掉编辑器与扩展的最多 27 类历史与缓存，并报告执行、跳过与失败了几条命令（[会清理的内容](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/cleanup.md#清理历史与缓存)）。
+- **「清理工具箱：清理历史与缓存」**（`editorConsoleToolkit.cleanup.clearHistory`）：确认清单后清掉编辑器与扩展的最多 27 类历史与缓存（命令面板记录、最近打开的文件和语音转写还会再问一次），并报告执行、跳过与失败了几条命令（[会清理的内容](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/cleanup.md#清理历史与缓存)）。
 - **「清理工具箱：删除工作数据...」**（`editorConsoleToolkit.cleanup.deleteWorkData`）：在聊天会话、本地历史、云端 Edit Sessions 与 Copilot 记忆和索引中删除勾选的项，所有项默认勾选（[删除的内容](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/cleanup.md#删除工作数据)）。
 
 ## v0.0.7 2026-10-16 文档重写
