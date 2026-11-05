@@ -268,7 +268,7 @@ export function locateAnchor(
 		// 落到块外, 目标不在作用域内; 后者继续扫也不会更好. 只有确认目标块仍在本行之后才
 		// 就地收尾 —— 那意味着块根本没有包住目标, 属于残缺文件的兜底.
 		if (exit.stack.length < kept) {
-			const span = delimiterSpan(snapshot, lexConfig, target.sourceRange.start);
+			const span = delimiterSpan(states, target.sourceRange.start);
 			if (span !== null && span.kind === "brace-block" && span.end <= line.end) {
 				return unsupported("unbalanced-syntax");
 			}
@@ -358,14 +358,14 @@ export function locateAnchor(
 		if (isBracelessControlHeader(statementCode)) {
 			return unsupported("unbalanced-syntax");
 		}
-		const span = delimiterSpan(snapshot, lexConfig, target.sourceRange.start);
+		const span = delimiterSpan(states, target.sourceRange.start);
 		if (span !== null && span.end <= line.end) {
 			if (span.kind === "brace-block") return unsupported("unbalanced-syntax");
 			if (span.kind === "paren" || span.kind === "bracket") {
 				let probe = span.end;
 				while (probe < snapshot.text.length && /\s/.test(snapshot.text[probe])) probe++;
 				if (snapshot.text[probe] === "{") {
-					const block = delimiterSpan(snapshot, lexConfig, probe);
+					const block = delimiterSpan(states, probe);
 					if (block !== null && block.kind === "brace-block" && block.end <= line.end) {
 						return unsupported("unbalanced-syntax");
 					}

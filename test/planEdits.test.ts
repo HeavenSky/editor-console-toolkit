@@ -62,6 +62,33 @@ describe("planEdits insert", () => {
 		expect(plan.firstReason).toBeNull();
 	});
 
+	it.each(["count++", "count--", "/x/"])("%s 后的除法不吞掉闭括号", operand => {
+		const text = `const ratio = (${operand} / total);\nconst value = 1;\n`;
+		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "value")], "insert");
+		expect(plan.firstReason).toBeNull();
+		expect(apply(text, plan)).toBe(`${text}console.log('[D] value:', value); // ect:v1\n`);
+	});
+
+	it("多个光标复用全文状态和定界符配对, 不逐个读取全文", () => {
+		const text = Array.from({ length: 500 }, (_, i) => `const value${i} = call(${i});`).join(
+			"\n"
+		);
+		const snapshot = snap(text);
+		let reads = 0;
+		const counted = {
+			...snapshot,
+			lineAt: (index: number) => {
+				reads++;
+				return snapshot.lineAt(index);
+			},
+		};
+		const selections = Array.from({ length: 50 }, (_, i) => caretIn(text, `value${i * 10}`));
+		const plan = planEdits(counted, js, PREFIX, selections, "insert");
+		expect(plan.firstReason).toBeNull();
+		expect(plan.edits).toHaveLength(selections.length);
+		expect(reads).toBeLessThan(snapshot.lineCount * 3 + selections.length * 20);
+	});
+
 	it("下一行的日志内容不同时仍然插入", () => {
 		const text = "const user = 1;\nconsole.log('[D] other:', other); // ect:v1\n";
 		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "user")], "insert");

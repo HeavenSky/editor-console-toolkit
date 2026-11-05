@@ -36,6 +36,19 @@ export type LexConfig = {
 	regexLiterals?: boolean;
 };
 
+type DelimiterSpan = {
+	start: number;
+	end: number | null;
+	kind: DelimiterKind;
+	parent: DelimiterSpan | null;
+};
+
+/** 与行状态共用生命周期, 不为每个光标重复扫描全文. */
+const scanDetails = new WeakMap<
+	readonly LexState[],
+	{ spans: DelimiterSpan[]; regexEntries: boolean[] }
+>();
+
 /** 行尾出现这些符号时, 紧随的 `{` 是块: 头部的收尾括号, 箭头函数体, do 块. */
 const BLOCK_TAIL_SYMBOLS = [")", "=>", "->"] as const;
 
@@ -138,18 +151,25 @@ const REGEX_KEYWORDS = new Set([
 /** 正则字面量允许的 flags 字符. */
 const REGEX_FLAGS = /[a-z]/;
 
+type TokenState = { regexAllowed: boolean };
+
 /**
- * `/` 应该开启正则还是当作除法.
- *
- * 只看它之前最近的代码字符与收尾单词: 标识符收尾时看是不是关键字; `)`, `]`, `}` 与字符串
- * 收尾之后是除法; 其余 (运算符, 开括号, 行首) 之后都是正则. 判不出来按除法处理 —— 把除法
- * 当成正则只是跳过几个字符, 把正则当成除法却会让它的内容污染后续词法状态, 保守方向选错不起
- * 作用的那边. `}` 之后按除法处理是已知盲区: `if (x) {} /re/.test(y)` 这种块后紧跟正则的
- * 写法极少见.
+ * 推进一个代码 token, 记录后面能否开始正则. 字符串与正则由调用方整体跳过, 收尾后作为操作数.
+ * `++`/`--` 在操作数后是后缀, 在表达式开头是前缀, 两者都保留原来的期待状态.
+ * `}` 仍按操作数处理, 不推断块后紧跟正则的语法歧义.
  */
-function startsRegex(lastChar: string, lastWord: string): boolean {
-	if (/[\w$]/.test(lastChar)) return REGEX_KEYWORDS.has(lastWord);
-	return !")]}\"'`".includes(lastChar);
+function advanceToken(text: string, start: number, state: TokenState): number {
+	const ch = text[start];
+	if (/\s/.test(ch)) return start + 1;
+	if (/[\w$]/.test(ch)) {
+		let end = start + 1;
+		while (end < text.length && /[\w$]/.test(text[end])) end++;
+		state.regexAllowed = REGEX_KEYWORDS.has(text.slice(start, end));
+		return end;
+	}
+	if ((ch === "+" || ch === "-") && text[start + 1] === ch) return start + 2;
+	state.regexAllowed = !")]}".includes(ch);
+	return start + 1;
 }
 
 /**
@@ -365,14 +385,16 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 	const delimiters = longestFirst(config.stringDelimiters);
 	const states: LexState[] = [{ stack: [], openQuote: null, inBlockComment: false }];
 	const stack: OpenDelimiter[] = [];
+	const spans: DelimiterSpan[] = [];
+	const spanStack: DelimiterSpan[] = [];
+	const regexEntries = [true];
 	let openQuote: string | null = null;
 	let inBlockComment = false;
-	/** 最近一个代码字符与其收尾单词; 空白与注释不打断它, 供正则与除法判定跨行使用。 */
-	let lastChar = "";
-	let lastWord = "";
+	const token: TokenState = { regexAllowed: true };
 
 	for (let line = 0; line < snapshot.lineCount; line++) {
-		const text = snapshot.lineAt(line).text;
+		const lineInfo = snapshot.lineAt(line);
+		const text = lineInfo.text;
 		let i = 0;
 
 		while (i < text.length) {
@@ -394,8 +416,7 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 				}
 				if (text.startsWith(openQuote, i)) {
 					i += openQuote.length;
-					lastChar = openQuote[0];
-					lastWord = "";
+					token.regexAllowed = false;
 					openQuote = null;
 					continue;
 				}
@@ -414,11 +435,9 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 			}
 
 			const ch = text[i];
-			if (ch === "/" && config.regexLiterals === true && startsRegex(lastChar, lastWord)) {
+			if (ch === "/" && config.regexLiterals === true && token.regexAllowed) {
 				i = skipRegex(text, i);
-				// 正则整体是一个操作数, 收尾后按"非标识符字符"对待。
-				lastChar = "/";
-				lastWord = "";
+				token.regexAllowed = false;
 				continue;
 			}
 
@@ -429,36 +448,47 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 				continue;
 			}
 
-			if (/[\w$]/.test(ch)) {
-				lastChar = ch;
-				lastWord += ch;
-			} else if (!/\s/.test(ch)) {
-				lastChar = ch;
-				lastWord = "";
-			}
-
-			if (ch === "(") {
-				stack.push({ kind: "paren", line, column: i });
-			} else if (ch === "[") {
-				stack.push({ kind: "bracket", line, column: i });
-			} else if (ch === "{") {
-				const kind = classifyBrace(codeBeforeDelimiter(snapshot, config, line, i).code);
-				// 判不出来按字面量处理, 理由见 classifyBrace 的注释.
-				stack.push({
-					kind: kind === "block" ? "brace-block" : "brace-literal",
-					line,
-					column: i,
-				});
+			if (ch === "(" || ch === "[" || ch === "{") {
+				let kind: DelimiterKind;
+				if (ch === "{") {
+					const braceKind = classifyBrace(
+						codeBeforeDelimiter(snapshot, config, line, i).code
+					);
+					kind = braceKind === "block" ? "brace-block" : "brace-literal";
+				} else {
+					kind = ch === "(" ? "paren" : "bracket";
+				}
+				stack.push({ kind, line, column: i });
+				const span: DelimiterSpan = {
+					start: lineInfo.start + i,
+					end: null,
+					kind,
+					parent: spanStack.at(-1) ?? null,
+				};
+				spans.push(span);
+				spanStack.push(span);
 			} else if (ch === ")" || ch === "]" || ch === "}") {
 				// 多余的闭符直接忽略, 不让栈变成负深度.
-				if (stack.length > 0) stack.pop();
+				if (stack.length > 0) {
+					stack.pop();
+					const span = spanStack.pop()!;
+					if (
+						(ch === ")" && span.kind === "paren") ||
+						(ch === "]" && span.kind === "bracket") ||
+						(ch === "}" && span.kind.startsWith("brace"))
+					) {
+						span.end = lineInfo.start + i + 1;
+					}
+				}
 			}
-			i++;
+			i = advanceToken(text, i, token);
 		}
 
 		states.push({ stack: [...stack], openQuote, inBlockComment });
+		regexEntries.push(token.regexAllowed);
 	}
 
+	scanDetails.set(states, { spans, regexEntries });
 	return states;
 }
 
@@ -471,116 +501,26 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
  * 一行的写法 —— 那时目标行的入口与出口栈完全一致, 只看栈深发现不了作用域已经关闭.
  */
 export function delimiterSpan(
-	snapshot: DocumentSnapshot,
-	config: LexConfig,
+	states: readonly LexState[],
 	offset: number
 ): { start: number; end: number; kind: DelimiterKind } | null {
-	const delimiters = longestFirst(config.stringDelimiters);
-	const CLOSER_OF: Record<string, "paren" | "bracket" | "brace-block" | "brace-literal"> = {
-		")": "paren",
-		"]": "bracket",
-		"}": "brace-block",
-	};
-	let openQuote: string | null = null;
-	let inBlockComment = false;
-	let lastChar = "";
-	let lastWord = "";
-	/** 栈里同时记开符 offset; 花括号在压栈时就按 classifyBrace 定种类. */
-	const stack: { kind: DelimiterKind; start: number }[] = [];
-	let best: { start: number; end: number; kind: DelimiterKind } | null = null;
-
-	for (let line = 0; line < snapshot.lineCount; line++) {
-		const lineStart = snapshot.lineAt(line).start;
-		const text = snapshot.lineAt(line).text;
-		let i = 0;
-
-		while (i < text.length) {
-			const offsetHere = lineStart + i;
-			if (inBlockComment) {
-				const close = config.blockComment!.close;
-				if (text.startsWith(close, i)) {
-					inBlockComment = false;
-					i += close.length;
-				} else {
-					i++;
-				}
-				continue;
-			}
-			if (openQuote !== null) {
-				if (text[i] === "\\") {
-					i += 2;
-					continue;
-				}
-				if (text.startsWith(openQuote, i)) {
-					i += openQuote.length;
-					lastChar = openQuote[0];
-					lastWord = "";
-					openQuote = null;
-					continue;
-				}
-				i++;
-				continue;
-			}
-			if (config.blockComment !== undefined && text.startsWith(config.blockComment.open, i)) {
-				inBlockComment = true;
-				i += config.blockComment.open.length;
-				continue;
-			}
-			if (text.startsWith(config.lineComment, i)) break;
-
-			const ch = text[i];
-			if (ch === "/" && config.regexLiterals === true && startsRegex(lastChar, lastWord)) {
-				i = skipRegex(text, i);
-				lastChar = "/";
-				lastWord = "";
-				continue;
-			}
-			const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
-			if (delimiter !== undefined) {
-				openQuote = delimiter;
-				i += delimiter.length;
-				continue;
-			}
-
-			if (/[\w$]/.test(ch)) {
-				lastChar = ch;
-				lastWord += ch;
-			} else if (!/\s/.test(ch)) {
-				lastChar = ch;
-				lastWord = "";
-			}
-
-			if (ch === "(" || ch === "[") {
-				stack.push({ kind: ch === "(" ? "paren" : "bracket", start: offsetHere });
-				i++;
-				continue;
-			}
-			if (ch === "{") {
-				const kind = classifyBrace(codeBeforeDelimiter(snapshot, config, line, i).code);
-				stack.push({
-					kind: kind === "block" ? "brace-block" : "brace-literal",
-					start: offsetHere,
-				});
-				i++;
-				continue;
-			}
-			const closerKind = CLOSER_OF[ch];
-			if (closerKind !== undefined && stack.length > 0) {
-				const open = stack.pop()!;
-				const matched =
-					open.kind === closerKind ||
-					(closerKind === "brace-block" && open.kind.startsWith("brace"));
-				if (matched && open.start <= offset && offset < offsetHere && best === null) {
-					best = { start: open.start, end: offsetHere + 1, kind: open.kind };
-				}
-				i++;
-				continue;
-			}
-			i++;
-		}
+	const spans = scanDetails.get(states)?.spans ?? [];
+	// 开符按 offset 升序记录; 找到最近的开符后, 沿父区间回溯到仍包住目标的最内层配对.
+	let low = 0;
+	let high = spans.length;
+	while (low < high) {
+		const mid = (low + high) >>> 1;
+		if (spans[mid].start <= offset) low = mid + 1;
+		else high = mid;
 	}
-
-	return best;
+	let span: DelimiterSpan | null = spans[low - 1] ?? null;
+	while (span !== null) {
+		if (span.end !== null && offset < span.end - 1) {
+			return { start: span.start, end: span.end, kind: span.kind };
+		}
+		span = span.parent;
+	}
+	return null;
 }
 
 /** 某个 offset 落在代码, 行注释, 块注释还是字符串里; 块注释与跨行字符串都算准. */
@@ -599,8 +539,9 @@ export function classifyAt(
 	const text = line.text;
 	let openQuote = entry.openQuote;
 	let inBlockComment = entry.inBlockComment;
-	let lastChar = "";
-	let lastWord = "";
+	const token: TokenState = {
+		regexAllowed: scanDetails.get(states)?.regexEntries[index] ?? true,
+	};
 	let i = 0;
 
 	while (i < column) {
@@ -621,8 +562,7 @@ export function classifyAt(
 			}
 			if (text.startsWith(openQuote, i)) {
 				i += openQuote.length;
-				lastChar = openQuote[0];
-				lastWord = "";
+				token.regexAllowed = false;
 				openQuote = null;
 				continue;
 			}
@@ -638,13 +578,12 @@ export function classifyAt(
 			return "comment";
 		}
 		const ch = text[i];
-		if (ch === "/" && config.regexLiterals === true && startsRegex(lastChar, lastWord)) {
+		if (ch === "/" && config.regexLiterals === true && token.regexAllowed) {
 			// 光标落在正则字面量内部时按代码处理; 字面量越过 column 就直接结束回放。
 			const end = skipRegex(text, i);
 			if (end > column) return "code";
 			i = end;
-			lastChar = "/";
-			lastWord = "";
+			token.regexAllowed = false;
 			continue;
 		}
 		const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
@@ -653,14 +592,7 @@ export function classifyAt(
 			i += delimiter.length;
 			continue;
 		}
-		if (/[\w$]/.test(ch)) {
-			lastChar = ch;
-			lastWord += ch;
-		} else if (!/\s/.test(ch)) {
-			lastChar = ch;
-			lastWord = "";
-		}
-		i++;
+		i = advanceToken(text, i, token);
 	}
 
 	if (inBlockComment) return "comment";

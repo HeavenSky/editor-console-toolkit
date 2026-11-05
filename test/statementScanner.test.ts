@@ -43,6 +43,21 @@ describe("classifyOffset", () => {
 		expect(classifyOffset(snap(text), text.indexOf("c;"), JS)).toBe("code");
 	});
 
+	it.each(["count++", "count--", "/x/"])("%s 后的除法不吞掉同一行的字符串", operand => {
+		const text = `const ratio = ${operand} / total; const label = 'hello';`;
+		expect(classifyOffset(snap(text), text.indexOf("hello"), JSRE)).toBe("string");
+	});
+
+	it.each(["++count", "--count"])("%s 的除法与后续正则分别识别", operand => {
+		const text = `const ratio = ${operand} / total; const re = /'/;\nconst value = 1;`;
+		expect(classifyOffset(snap(text), text.indexOf("value"), JSRE)).toBe("code");
+	});
+
+	it("行首除法复用上一行的操作数状态", () => {
+		const text = "const ratio = count\n / total; const label = 'hello';";
+		expect(classifyOffset(snap(text), text.indexOf("hello"), JSRE)).toBe("string");
+	});
+
 	it("块注释里的光标算注释, 跨行也算", () => {
 		const text = "/*\nconst hidden = 1;\n*/\nnext();";
 		expect(classifyOffset(snap(text), text.indexOf("hidden"), JS)).toBe("comment");

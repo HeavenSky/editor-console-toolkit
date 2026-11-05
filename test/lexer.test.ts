@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyBrace, isContinuation, scanDocument } from "../src/core/lexer";
+import { classifyBrace, delimiterSpan, isContinuation, scanDocument } from "../src/core/lexer";
 import type { LexConfig } from "../src/core/lexer";
 
 import { snap } from "./helpers";
@@ -103,6 +103,36 @@ describe("isContinuation", () => {
 	it("Python 的块头不算续行", () => {
 		// `:` 刻意不在行尾续行集合里 —— 它是 Python 的块开始。
 		expect(isContinuation("def f(value):", "    return value")).toBe(false);
+	});
+});
+
+describe("delimiterSpan", () => {
+	it("嵌套实参取最内层配对, 后续语句跳过已闭合的兄弟区间", () => {
+		const text = "function f(value) { first(value); return value; }";
+		const states = scanDocument(snap(text), JS);
+		const callStart = text.indexOf("(", text.indexOf("first"));
+		expect(delimiterSpan(states, text.indexOf("value", callStart))).toEqual({
+			start: callStart,
+			end: text.indexOf(")", callStart) + 1,
+			kind: "paren",
+		});
+		expect(delimiterSpan(states, text.lastIndexOf("value"))).toEqual({
+			start: text.indexOf("{"),
+			end: text.length,
+			kind: "brace-block",
+		});
+	});
+
+	it("不把字符串与注释中的开符记成区间", () => {
+		const text = "const value = '('; // [\nnext();";
+		const states = scanDocument(snap(text), JS);
+		expect(delimiterSpan(states, text.indexOf("next"))).toBeNull();
+	});
+
+	it("未配对和错误配对的定界符没有有效闭合区间", () => {
+		for (const text of ["call(value", "call(value]"]) {
+			expect(delimiterSpan(scanDocument(snap(text), JS), text.indexOf("value"))).toBeNull();
+		}
 	});
 });
 
