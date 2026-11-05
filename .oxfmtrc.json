@@ -1,7 +1,7 @@
 {
 	"$schema": "https://unpkg.com/oxfmt/configuration_schema.json",
 	"arrowParens": "avoid",
-	"ignorePatterns": ["*.min.*", "test/fixtures/**"],
+	"ignorePatterns": ["*.min.*", "package-lock.json", "test/fixtures/**"],
 	"jsxSingleQuote": false,
 	"objectWrap": "collapse",
 	"singleQuote": false,
