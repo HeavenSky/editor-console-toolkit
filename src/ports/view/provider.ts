@@ -110,6 +110,7 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
 				hideSystemProcesses: config.hideSystemProcesses,
 				systemPortMax: config.systemPortMax,
 				search,
+				home,
 			});
 
 			return [

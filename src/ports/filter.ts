@@ -80,8 +80,14 @@ export function classifyOrigin(
 	return isSystemProcess(entry, systemPortMax) ? "system" : "other";
 }
 
-/** 搜索匹配进程名, 完整命令行, PID, 工作目录与任一端口号。 */
-export function matchesSearch(entry: ProcessEntry, search: string): boolean {
+/**
+ * 搜索匹配进程名, 完整命令行, PID, 工作目录与任一端口号。
+ *
+ * `home` 非空时, 以 `~` 开头的搜索词先展开成真实 home 路径再匹配工作目录 —— 视图展示
+ * cwd 时把 home 前缀缩写成 `~`, 搜索框的示例也是 `~/repo`, 不展开就对不上真实路径。
+ * 只有紧跟目录分隔符的 `~` 才展开, 普通字符串里的 `~` 仍按字面匹配。
+ */
+export function matchesSearch(entry: ProcessEntry, search: string, home = ""): boolean {
 	const needle = search.trim().toLowerCase();
 	if (needle === "") return true;
 
@@ -92,7 +98,14 @@ export function matchesSearch(entry: ProcessEntry, search: string): boolean {
 		entry.pid === null ? "" : String(entry.pid),
 		...entry.listeners.map(listener => String(listener.port)),
 	];
-	return haystacks.some(value => value.toLowerCase().includes(needle));
+	// `~` 只在紧跟分隔符或单独出现时展开成 home; 展开后的路径与原词都参与匹配.
+	const needles = [needle];
+	if (home !== "" && (needle === "~" || needle.startsWith("~/") || needle.startsWith("~\\"))) {
+		needles.push(`${home}${needle.slice(1).replace(/[/\\]/g, sep)}`.toLowerCase());
+	}
+	return needles.some(needleVariant =>
+		haystacks.some(value => value.toLowerCase().includes(needleVariant))
+	);
 }
 
 /** 本工作区优先 → 最小监听端口升序 → PID 升序。 */
@@ -139,6 +152,8 @@ export interface FilterOptions {
 	hideSystemProcesses: boolean;
 	systemPortMax: number;
 	search: string;
+	/** 当前用户 home 目录; 供搜索词里的 `~` 缩写展开, 缺省时不展开. */
+	home?: string;
 }
 
 /** 归属判定 → 系统项过滤 → 搜索过滤 → 排序。 */
@@ -150,7 +165,7 @@ export function applyFilters(entries: ProcessEntry[], options: FilterOptions): P
 
 	const visible = classified.filter(entry => {
 		if (options.hideSystemProcesses && entry.origin === "system") return false;
-		return matchesSearch(entry, options.search);
+		return matchesSearch(entry, options.search, options.home ?? "");
 	});
 
 	return sortEntries(visible);
@@ -173,7 +188,9 @@ export function summarizeFilter(entries: ProcessEntry[], options: FilterOptions)
 	const withoutSearch = applyFilters(entries, { ...options, search: "" });
 	// applyFilters 已排好序, 而 Array.filter 保序, 因此不必再排一次。
 	return {
-		visible: withoutSearch.filter(entry => matchesSearch(entry, options.search)),
+		visible: withoutSearch.filter(entry =>
+			matchesSearch(entry, options.search, options.home ?? "")
+		),
 		total: withoutSearch.length,
 	};
 }

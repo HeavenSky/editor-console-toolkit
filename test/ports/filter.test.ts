@@ -146,6 +146,27 @@ describe("matchesSearch", () => {
 	it("不匹配时返回 false", () => {
 		expect(matchesSearch(node, "postgres")).toBe(false);
 	});
+
+	it("以 ~ 开头的搜索词按 home 缩写匹配工作目录", () => {
+		const homeCwd = entry({
+			name: "node",
+			command: "node serve.js",
+			cwd: "/Users/sky/repo/web",
+			listeners: [tcp(3000)],
+		});
+		expect(matchesSearch(homeCwd, "~/repo", "/Users/sky")).toBe(true);
+		expect(matchesSearch(homeCwd, "~/repo/web", "/Users/sky")).toBe(true);
+		expect(matchesSearch(homeCwd, "~", "/Users/sky")).toBe(true);
+		// 命中不了时仍是 false, 而不是放行一切。
+		expect(matchesSearch(homeCwd, "~/other", "/Users/sky")).toBe(false);
+	});
+
+	it("普通字符串里的 ~ 按字面匹配, 不展开", () => {
+		const tilde = entry({ name: "node", command: "node a~b.js", cwd: "/repo" });
+		expect(matchesSearch(tilde, "a~b", "/Users/sky")).toBe(true);
+		// cwd 不在 home 下时, `~/` 形态不误命中。
+		expect(matchesSearch(tilde, "~/repo", "/Users/sky")).toBe(false);
+	});
 });
 
 describe("sortEntries", () => {
