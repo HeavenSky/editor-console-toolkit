@@ -32,6 +32,8 @@ export type TemplateSpec = {
 	readonly quote: '"' | "'";
 	/** 追加到标识符字符集的字符, 例如 PHP 的 `$`. */
 	readonly identifierExtra?: string;
+	/** 语言有正则字面量时开启: 词法层把 `/.../` 与除法区分开. */
+	readonly regexLiterals?: boolean;
 	/** 字符串定界符, 默认 `"` 与 `'`. 可以是多字符, 例如 Python 的 `'''`; 匹配时长的优先. */
 	readonly stringDelimiters?: readonly string[];
 	/** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
@@ -55,6 +57,7 @@ export function createTemplateAdapter(spec: TemplateSpec): LanguageAdapter {
 		commentPrefix: spec.commentPrefix,
 		stringDelimiters: spec.stringDelimiters ?? DEFAULT_DELIMITERS,
 		blockComment: spec.blockComment,
+		regexLiterals: spec.regexLiterals,
 		restrictedBlockKeywords: spec.restrictedBlockKeywords,
 		blockStyle: spec.blockStyle,
 		blockOpenKeywords: spec.blockOpenKeywords,

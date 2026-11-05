@@ -31,6 +31,37 @@ describe("planEdits insert", () => {
 		expect(plan.firstReason).toBeNull();
 	});
 
+	it("无块体的 if 头安全拒绝: 不产生任何编辑", () => {
+		const text = "if (ready)\n  work();\nelse\n  other();\n";
+		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "ready")], "insert");
+		expect(plan.edits).toEqual([]);
+		expect(plan.firstReason).toBe("unbalanced-syntax");
+		expect(apply(text, plan)).toBe(text);
+	});
+
+	it("开闭压在一行的函数体安全拒绝: 不产生任何编辑", () => {
+		const text = "function f(value) { return value; }\nnext();\n";
+		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "value")], "insert");
+		expect(plan.edits).toEqual([]);
+		expect(plan.firstReason).toBe("unbalanced-syntax");
+		expect(apply(text, plan)).toBe(text);
+	});
+
+	it("含 $ 的标识符完整取词, 生成的日志可执行", () => {
+		const text = "const $value = 1;\n";
+		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "value")], "insert");
+		expect(plan.edits).toHaveLength(1);
+		const out = apply(text, plan);
+		expect(out).toContain("console.log('[D] $value:', $value);");
+	});
+
+	it("前面一行的正则字面量不会让后面的光标被判成字符串", () => {
+		const text = "const regex = /'/;\nconst value = 1;\n";
+		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "value")], "insert");
+		expect(plan.edits).toHaveLength(1);
+		expect(plan.firstReason).toBeNull();
+	});
+
 	it("下一行的日志内容不同时仍然插入", () => {
 		const text = "const user = 1;\nconsole.log('[D] other:', other); // ect:v1\n";
 		const plan = planEdits(snap(text), js, PREFIX, [caretIn(text, "user")], "insert");

@@ -45,6 +45,15 @@ describe("resolveSelection 空选择", () => {
 		expect(expr(text, caretIn(text, "user"))).toBe("user");
 	});
 
+	it("含 $ 的 JS/TS 名称完整取词, 不在 $ 处截断", () => {
+		const declared = "const $value = 1;";
+		expect(expr(declared, caretIn(declared, "value"), "$")).toBe("$value");
+		const mixed = "const foo$bar = 1;";
+		expect(expr(mixed, caretIn(mixed, "bar"), "$")).toBe("foo$bar");
+		const prop = "obj.$value;";
+		expect(expr(prop, caretIn(prop, "value"), "$")).toBe("obj.$value");
+	});
+
 	it("光标不在标识符上时报 empty-target", () => {
 		const text = "const a = 1;   ";
 		expect(reason(text, { anchor: 14, active: 14 })).toBe("empty-target");

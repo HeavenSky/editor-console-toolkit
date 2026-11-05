@@ -11,6 +11,7 @@ const JS: ScanConfig = {
 	stringDelimiters: ['"', "'", "`"],
 	blockComment: { open: "/*", close: "*/" },
 };
+const JSRE: ScanConfig = { ...JS, regexLiterals: true };
 const RUST: ScanConfig = { commentPrefix: "//", stringDelimiters: ['"'] };
 const PY: ScanConfig = { commentPrefix: "#", stringDelimiters: ['"""', "'''", '"', "'"] };
 
@@ -132,6 +133,57 @@ describe("locateAnchor", () => {
 	it("方法链的点号在行首时继续向下", () => {
 		const text = "const v = source\n  .filter(Boolean)\n  .join();\nnext();";
 		expect(anchorLine(text, "source", JS)).toBe(2);
+	});
+});
+
+describe("locateAnchor 不安全插入的拒绝", () => {
+	it("无块体的控制流头拒绝插入, 避免日志变成分支体", () => {
+		// 插在 `if (ready)` 行尾会让日志成为 if 的分支体, 原本的 work() 反而失去条件;
+		// 有 else 时更直接是语法错误。
+		expect(anchorLine("if (ready)\n  work();\nelse\n  other();\n", "ready", JS)).toBe(
+			"unbalanced-syntax"
+		);
+		expect(anchorLine("if (ready)\n  work();\n", "ready", JS)).toBe("unbalanced-syntax");
+		expect(anchorLine("while (ready)\n  work();\n", "ready", JS)).toBe("unbalanced-syntax");
+	});
+
+	it("多行条件的无块体控制流头同样拒绝插入", () => {
+		expect(anchorLine("if (\n  ready\n)\n  work();\n", "ready", JS)).toBe("unbalanced-syntax");
+	});
+
+	it("头后同一行自带语句体时行尾插入仍安全", () => {
+		expect(anchorLine("if (ready) work();\nnext();\n", "ready", JS)).toBe(0);
+		expect(anchorLine("while (run()) tick();\nnext();\n", "run", JS)).toBe(0);
+	});
+
+	it("开闭压在一行的函数体拒绝插入, 避免日志落到块外", () => {
+		expect(anchorLine("function f(value) { return value; }\nnext();\n", "value", JS)).toBe(
+			"unbalanced-syntax"
+		);
+		// 块尾行带收尾语句时同理: 入口栈里有块, 行尾插入会落在函数之外。
+		expect(
+			anchorLine("function f(value) {\n  return value; }\nnext();\n", "return value", JS)
+		).toBe("unbalanced-syntax");
+	});
+
+	it("多行函数体内的普通语句不受影响", () => {
+		expect(anchorLine("function f(value) {\n  return value;\n}\n", "return value", JS)).toBe(1);
+	});
+
+	it("正则字面量里的引号不污染后续行的分类", () => {
+		const text = "const regex = /'/;\nconst value = 1;\n";
+		expect(anchorLine(text, "value", JSRE)).toBe(1);
+	});
+
+	it("正则的转义斜杠与字符类之后代码仍能分类", () => {
+		const text = "const re = /a\\/b[']+/;\nconst value = 1;\n";
+		expect(anchorLine(text, "value", JSRE)).toBe(1);
+	});
+
+	it("标识符之后的 / 按除法处理, 后续字符串照常识别", () => {
+		const text = "const half = width / 2; const label = 'x';";
+		const offset = text.indexOf("'x'") + 1;
+		expect(classifyOffset(snap(text), offset, JSRE)).toBe("string");
 	});
 });
 

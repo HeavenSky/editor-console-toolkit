@@ -32,6 +32,8 @@ export type LexConfig = {
 	/** 字符串定界符; 可以是多字符, 例如 Python 的 `'''`. */
 	stringDelimiters: readonly string[];
 	blockComment?: { open: string; close: string };
+	/** 语言有正则字面量时开启: `/.../` 与除法区分开, 否则正则里的引号会污染后续整个文档. */
+	regexLiterals?: boolean;
 };
 
 /** 行尾出现这些符号时, 紧随的 `{` 是块: 头部的收尾括号, 箭头函数体, do 块. */
@@ -110,6 +112,74 @@ const LEADING_CONTINUATIONS = [
 ] as const;
 
 const WORD_TAIL = /([A-Za-z_$][\w$]*)$/;
+
+/**
+ * 这些关键字之后, 紧随的 `/` 开启正则字面量而不是除法.
+ *
+ * 它们与 `/` 之间不要求操作数 (`return /re/`, `case /x/:`), 而普通标识符之后的 `/` 一律是除法.
+ */
+const REGEX_KEYWORDS = new Set([
+	"return",
+	"typeof",
+	"instanceof",
+	"in",
+	"of",
+	"new",
+	"case",
+	"do",
+	"else",
+	"void",
+	"delete",
+	"throw",
+	"yield",
+	"await",
+]);
+
+/** 正则字面量允许的 flags 字符. */
+const REGEX_FLAGS = /[a-z]/;
+
+/**
+ * `/` 应该开启正则还是当作除法.
+ *
+ * 只看它之前最近的代码字符与收尾单词: 标识符收尾时看是不是关键字; `)`, `]`, `}` 与字符串
+ * 收尾之后是除法; 其余 (运算符, 开括号, 行首) 之后都是正则. 判不出来按除法处理 —— 把除法
+ * 当成正则只是跳过几个字符, 把正则当成除法却会让它的内容污染后续词法状态, 保守方向选错不起
+ * 作用的那边. `}` 之后按除法处理是已知盲区: `if (x) {} /re/.test(y)` 这种块后紧跟正则的
+ * 写法极少见.
+ */
+function startsRegex(lastChar: string, lastWord: string): boolean {
+	if (/[\w$]/.test(lastChar)) return REGEX_KEYWORDS.has(lastWord);
+	return !")]}\"'`".includes(lastChar);
+}
+
+/**
+ * 从正则开始位置越过整个字面量, 返回结束后的下标.
+ *
+ * 处理转义与 `[...]` 字符类 (类内的 `/` 不收尾); 收尾后吞掉 flags. 跨行的正则不存在
+ * (JS 语法不允许), 没找到收尾就把整行余下部分当作正则内容.
+ */
+function skipRegex(text: string, start: number): number {
+	let i = start + 1;
+	let inClass = false;
+	while (i < text.length) {
+		const ch = text[i];
+		if (ch === "\\") {
+			i += 2;
+			continue;
+		}
+		if (inClass) {
+			if (ch === "]") inClass = false;
+		} else if (ch === "[") {
+			inClass = true;
+		} else if (ch === "/") {
+			i += 1;
+			while (i < text.length && REGEX_FLAGS.test(text[i])) i++;
+			return i;
+		}
+		i++;
+	}
+	return text.length;
+}
 
 /** 按长度降序匹配, 保证 `=>` 不被 `=` 抢走, `'''` 不被 `'` 抢走. */
 const longestFirst = (values: readonly string[]): string[] =>
@@ -297,6 +367,9 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 	const stack: OpenDelimiter[] = [];
 	let openQuote: string | null = null;
 	let inBlockComment = false;
+	/** 最近一个代码字符与其收尾单词; 空白与注释不打断它, 供正则与除法判定跨行使用。 */
+	let lastChar = "";
+	let lastWord = "";
 
 	for (let line = 0; line < snapshot.lineCount; line++) {
 		const text = snapshot.lineAt(line).text;
@@ -321,6 +394,8 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 				}
 				if (text.startsWith(openQuote, i)) {
 					i += openQuote.length;
+					lastChar = openQuote[0];
+					lastWord = "";
 					openQuote = null;
 					continue;
 				}
@@ -338,6 +413,15 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 				break;
 			}
 
+			const ch = text[i];
+			if (ch === "/" && config.regexLiterals === true && startsRegex(lastChar, lastWord)) {
+				i = skipRegex(text, i);
+				// 正则整体是一个操作数, 收尾后按"非标识符字符"对待。
+				lastChar = "/";
+				lastWord = "";
+				continue;
+			}
+
 			const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
 			if (delimiter !== undefined) {
 				openQuote = delimiter;
@@ -345,7 +429,14 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 				continue;
 			}
 
-			const ch = text[i];
+			if (/[\w$]/.test(ch)) {
+				lastChar = ch;
+				lastWord += ch;
+			} else if (!/\s/.test(ch)) {
+				lastChar = ch;
+				lastWord = "";
+			}
+
 			if (ch === "(") {
 				stack.push({ kind: "paren", line, column: i });
 			} else if (ch === "[") {
@@ -371,6 +462,127 @@ export function scanDocument(snapshot: DocumentSnapshot, config: LexConfig): Lex
 	return states;
 }
 
+/**
+ * 包含给定 offset 的最内层定界符区间的文档范围; 不在任何定界符内返回 null.
+ *
+ * 区间为 `[start, end)`, start 是开符位置, end 越过闭符. 用来回答"日志插到收尾行行尾时,
+ * 目标还在不在它原本的作用域里": 闭合位置落在插入点之前的作用域 (函数块, 签名括号) 都
+ * 会让日志引用不到目标. 用于识别 `function f(value) { return value; }` 这类开闭都压在
+ * 一行的写法 —— 那时目标行的入口与出口栈完全一致, 只看栈深发现不了作用域已经关闭.
+ */
+export function delimiterSpan(
+	snapshot: DocumentSnapshot,
+	config: LexConfig,
+	offset: number
+): { start: number; end: number; kind: DelimiterKind } | null {
+	const delimiters = longestFirst(config.stringDelimiters);
+	const CLOSER_OF: Record<string, "paren" | "bracket" | "brace-block" | "brace-literal"> = {
+		")": "paren",
+		"]": "bracket",
+		"}": "brace-block",
+	};
+	let openQuote: string | null = null;
+	let inBlockComment = false;
+	let lastChar = "";
+	let lastWord = "";
+	/** 栈里同时记开符 offset; 花括号在压栈时就按 classifyBrace 定种类. */
+	const stack: { kind: DelimiterKind; start: number }[] = [];
+	let best: { start: number; end: number; kind: DelimiterKind } | null = null;
+
+	for (let line = 0; line < snapshot.lineCount; line++) {
+		const lineStart = snapshot.lineAt(line).start;
+		const text = snapshot.lineAt(line).text;
+		let i = 0;
+
+		while (i < text.length) {
+			const offsetHere = lineStart + i;
+			if (inBlockComment) {
+				const close = config.blockComment!.close;
+				if (text.startsWith(close, i)) {
+					inBlockComment = false;
+					i += close.length;
+				} else {
+					i++;
+				}
+				continue;
+			}
+			if (openQuote !== null) {
+				if (text[i] === "\\") {
+					i += 2;
+					continue;
+				}
+				if (text.startsWith(openQuote, i)) {
+					i += openQuote.length;
+					lastChar = openQuote[0];
+					lastWord = "";
+					openQuote = null;
+					continue;
+				}
+				i++;
+				continue;
+			}
+			if (config.blockComment !== undefined && text.startsWith(config.blockComment.open, i)) {
+				inBlockComment = true;
+				i += config.blockComment.open.length;
+				continue;
+			}
+			if (text.startsWith(config.lineComment, i)) break;
+
+			const ch = text[i];
+			if (ch === "/" && config.regexLiterals === true && startsRegex(lastChar, lastWord)) {
+				i = skipRegex(text, i);
+				lastChar = "/";
+				lastWord = "";
+				continue;
+			}
+			const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
+			if (delimiter !== undefined) {
+				openQuote = delimiter;
+				i += delimiter.length;
+				continue;
+			}
+
+			if (/[\w$]/.test(ch)) {
+				lastChar = ch;
+				lastWord += ch;
+			} else if (!/\s/.test(ch)) {
+				lastChar = ch;
+				lastWord = "";
+			}
+
+			if (ch === "(" || ch === "[") {
+				stack.push({ kind: ch === "(" ? "paren" : "bracket", start: offsetHere });
+				i++;
+				continue;
+			}
+			if (ch === "{") {
+				const kind = classifyBrace(codeBeforeDelimiter(snapshot, config, line, i).code);
+				stack.push({
+					kind: kind === "block" ? "brace-block" : "brace-literal",
+					start: offsetHere,
+				});
+				i++;
+				continue;
+			}
+			const closerKind = CLOSER_OF[ch];
+			if (closerKind !== undefined && stack.length > 0) {
+				const open = stack.pop()!;
+				const matched =
+					open.kind === closerKind ||
+					(closerKind === "brace-block" && open.kind.startsWith("brace"));
+				if (matched && open.start <= offset && offset < offsetHere && best === null) {
+					best = { start: open.start, end: offsetHere + 1, kind: open.kind };
+				}
+				i++;
+				continue;
+			}
+			i++;
+		}
+	}
+
+	return best;
+}
+
 /** 某个 offset 落在代码, 行注释, 块注释还是字符串里; 块注释与跨行字符串都算准. */
 export function classifyAt(
 	snapshot: DocumentSnapshot,
@@ -387,6 +599,8 @@ export function classifyAt(
 	const text = line.text;
 	let openQuote = entry.openQuote;
 	let inBlockComment = entry.inBlockComment;
+	let lastChar = "";
+	let lastWord = "";
 	let i = 0;
 
 	while (i < column) {
@@ -407,6 +621,8 @@ export function classifyAt(
 			}
 			if (text.startsWith(openQuote, i)) {
 				i += openQuote.length;
+				lastChar = openQuote[0];
+				lastWord = "";
 				openQuote = null;
 				continue;
 			}
@@ -421,11 +637,28 @@ export function classifyAt(
 		if (text.startsWith(config.lineComment, i)) {
 			return "comment";
 		}
+		const ch = text[i];
+		if (ch === "/" && config.regexLiterals === true && startsRegex(lastChar, lastWord)) {
+			// 光标落在正则字面量内部时按代码处理; 字面量越过 column 就直接结束回放。
+			const end = skipRegex(text, i);
+			if (end > column) return "code";
+			i = end;
+			lastChar = "/";
+			lastWord = "";
+			continue;
+		}
 		const delimiter = delimiters.find(candidate => text.startsWith(candidate, i));
 		if (delimiter !== undefined) {
 			openQuote = delimiter;
 			i += delimiter.length;
 			continue;
+		}
+		if (/[\w$]/.test(ch)) {
+			lastChar = ch;
+			lastWord += ch;
+		} else if (!/\s/.test(ch)) {
+			lastChar = ch;
+			lastWord = "";
 		}
 		i++;
 	}

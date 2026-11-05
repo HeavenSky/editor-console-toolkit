@@ -1,6 +1,7 @@
 import {
 	classifyAt,
 	codeBeforeDelimiter,
+	delimiterSpan,
 	isContinuation,
 	returnTypeStart,
 	scanDocument,
@@ -19,6 +20,8 @@ export type ScanConfig = {
 	stringDelimiters: readonly string[];
 	/** 块注释的开闭符; 没有块注释的语言(Python, Ruby, Elixir)不填. */
 	blockComment?: { open: string; close: string };
+	/** 语言有正则字面量时开启: 词法层把 `/.../` 与除法区分开. */
+	regexLiterals?: boolean;
 	/**
 	 * 语法上不能容纳语句的块的开启关键字, 例如 `switch` 的 case block 与 `class` 的 body.
 	 *
@@ -41,9 +44,76 @@ export const toLexConfig = (config: ScanConfig): LexConfig => ({
 	lineComment: config.commentPrefix,
 	stringDelimiters: config.stringDelimiters,
 	blockComment: config.blockComment,
+	regexLiterals: config.regexLiterals,
 });
 
+/**
+ * 词法状态表缓存: 同一份快照与适配器只扫描一次全文档.
+ *
+ * `planEdits` 会为每个光标调用 `locateAnchor`, 不缓存时每个光标都要重扫全文, 多光标命令的
+ * 耗时随光标数与文档长度相乘增长, 且同步阻塞扩展宿主. 快照是一次命令新建的对象, 命令结束
+ * 即可回收, 因此按快照弱引用缓存没有泄漏问题.
+ */
+const scanCache = new WeakMap<DocumentSnapshot, Map<ScanConfig, LexState[]>>();
+
+function statesFor(
+	snapshot: DocumentSnapshot,
+	config: ScanConfig,
+	lexConfig: LexConfig
+): LexState[] {
+	let perDoc = scanCache.get(snapshot);
+	if (perDoc === undefined) {
+		perDoc = new Map();
+		scanCache.set(snapshot, perDoc);
+	}
+	let states = perDoc.get(config);
+	if (states === undefined) {
+		states = scanDocument(snapshot, lexConfig);
+		perDoc.set(config, states);
+	}
+	return states;
+}
+
 const leadingWhitespace = (text: string): string => /^[ \t]*/.exec(text)![0];
+
+/** 控制流头的关键字; 这些语句没有块体时, 紧随的行才是分支体, 行尾不能插日志. */
+const CONTROL_HEADER = /^(?:if|else|for|while|do|try|catch|finally|switch)\b/;
+
+/**
+ * 语句(从起点到收尾行为止的代码)是否是"没有块体的控制流头".
+ *
+ * `if (ready)` 单独收尾时, 下一行才是它的分支体: 在收尾行之后插日志会把日志变成 if 的
+ * 分支体, 原分支体却滑到外面去 (`if (ready)\n  work();` 里没有 else 时, 日志成了无条件
+ * 执行的语句, 原本的 work() 反而失去条件). 头后同一行还跟有语句体时行尾插入是安全的.
+ * 花括号在后续行的 Allman 形态由续行判定与块路径处理, 到不了这里的调用点.
+ */
+function isBracelessControlHeader(statementCode: string): boolean {
+	const code = statementCode.trim();
+	if (!CONTROL_HEADER.test(code)) return false;
+	const open = code.indexOf("(");
+	if (open === -1) return true; // `else`, `do`, `try` 等裸关键字: 语句体在后续行.
+	// 找到与头括号配对的 `)`(跳过字符串字面量); 之后还有内容说明体压在同一行, 行尾插入安全.
+	let depth = 0;
+	let quote: string | null = null;
+	for (let i = open; i < code.length; i++) {
+		const ch = code[i];
+		if (quote !== null) {
+			if (ch === "\\") i++;
+			else if (ch === quote) quote = null;
+			continue;
+		}
+		if (ch === "'" || ch === '"' || ch === "`") {
+			quote = ch;
+			continue;
+		}
+		if (ch === "(") depth++;
+		else if (ch === ")") {
+			depth--;
+			if (depth === 0) return code.slice(i + 1).trim() === "";
+		}
+	}
+	return true; // 头括号到收尾仍未配对: 体必然在后续行.
+}
 
 /**
  * 判断某个 offset 落在代码, 注释还是字符串字面量里.
@@ -58,7 +128,7 @@ export function classifyOffset(
 	config: ScanConfig
 ): "code" | "comment" | "string" {
 	const lexConfig = toLexConfig(config);
-	return classifyAt(snapshot, offset, scanDocument(snapshot, lexConfig), lexConfig);
+	return classifyAt(snapshot, offset, statesFor(snapshot, config, lexConfig), lexConfig);
 }
 
 /**
@@ -165,7 +235,7 @@ export function locateAnchor(
 	config: ScanConfig
 ): InsertionAnchor | Unsupported {
 	const lexConfig = toLexConfig(config);
-	const states = scanDocument(snapshot, lexConfig);
+	const states = statesFor(snapshot, config, lexConfig);
 
 	const classification = classifyAt(snapshot, target.sourceRange.start, states, lexConfig);
 	if (classification === "comment") {
@@ -177,25 +247,31 @@ export function locateAnchor(
 
 	const entryStack = states[target.sourceLine].stack;
 	const kept = keptDepth(entryStack);
+	/** 语句首行: 最外层还需要闭合的定界符所在行, 目标行自己开语句时两者相同. */
+	const statementStartLine = entryStack[kept]?.line ?? target.sourceLine;
 	/**
 	 * 语句首行的缩进.
 	 *
-	 * 取"最外层还需要闭合的定界符"所在的行, 而不是目标所在的行: 目标落在多行调用的某个参数上时,
-	 * 那一行是缩进过的, 拿它的缩进会让日志与 `);` 对不齐. 目标行本身就是语句首行时两者相同,
-	 * 因此"缩进跟随目标行"的既有行为没有改变.
+	 * 取语句首行, 而不是目标所在的行: 目标落在多行调用的某个参数上时, 那一行是缩进过的,
+	 * 拿它的缩进会让日志与 `);` 对不齐. 目标行本身就是语句首行时两者相同, 因此"缩进跟随
+	 * 目标行"的既有行为没有改变.
 	 */
-	const statementIndent = leadingWhitespace(
-		snapshot.lineAt(entryStack[kept]?.line ?? target.sourceLine).text
-	);
+	const statementIndent = leadingWhitespace(snapshot.lineAt(statementStartLine).text);
 	const lastLine = Math.min(target.sourceLine + MAX_STATEMENT_LINES, snapshot.lineCount) - 1;
 
 	for (let index = target.sourceLine; index <= lastLine; index++) {
 		const line = snapshot.lineAt(index);
 		const exit: LexState = states[index + 1];
 
-		// 弹出了目标所在的块 —— 只可能出现在语法残缺的文件里. 就地收尾, 不继续向下扫,
-		// 否则会一路扫到 MAX_STATEMENT_LINES 然后报"找不到安全位置".
+		// 弹出了目标所在的块: 要么目标所在块在本行内闭合(开闭都压在一行或块尾行带收尾语句,
+		// 例如 `function f() { return value; }`), 要么文件语法残缺. 前者在行尾插入会让日志
+		// 落到块外, 目标不在作用域内; 后者继续扫也不会更好. 只有确认目标块仍在本行之后才
+		// 就地收尾 —— 那意味着块根本没有包住目标, 属于残缺文件的兜底.
 		if (exit.stack.length < kept) {
+			const span = delimiterSpan(snapshot, lexConfig, target.sourceRange.start);
+			if (span !== null && span.kind === "brace-block" && span.end <= line.end) {
+				return unsupported("unbalanced-syntax");
+			}
 			return {
 				kind: "anchor",
 				line: index,
@@ -268,6 +344,33 @@ export function locateAnchor(
 			return isRestrictedBlock(code, config.restrictedBlockKeywords)
 				? beforeLine(index)
 				: afterLine(blockIndent(snapshot, index, index));
+		}
+
+		// 到这里只能是"日志插在语句收尾行之后". 几种形态会写出坏代码, 拒绝并报找不到安全位置:
+		// - 无块体的控制流头 (`if (ready)` 单独收尾): 下一行才是分支体, 插在中间会改变语义;
+		// - 目标所在的花括号块在本行内已经闭合 (`if (x) { work(y); }`): 插在行尾会落到块外;
+		// - 目标在签名或条件括号里, 括号后紧跟同行闭合的函数体块
+		//   (`function f(value) { return value; }` 的形参): 参数在插入点已不在作用域内.
+		let statementCode = "";
+		for (let probe = statementStartLine; probe <= index; probe++) {
+			statementCode += ` ${stripLineComment(snapshot.lineAt(probe).text, lexConfig)}`;
+		}
+		if (isBracelessControlHeader(statementCode)) {
+			return unsupported("unbalanced-syntax");
+		}
+		const span = delimiterSpan(snapshot, lexConfig, target.sourceRange.start);
+		if (span !== null && span.end <= line.end) {
+			if (span.kind === "brace-block") return unsupported("unbalanced-syntax");
+			if (span.kind === "paren" || span.kind === "bracket") {
+				let probe = span.end;
+				while (probe < snapshot.text.length && /\s/.test(snapshot.text[probe])) probe++;
+				if (snapshot.text[probe] === "{") {
+					const block = delimiterSpan(snapshot, lexConfig, probe);
+					if (block !== null && block.kind === "brace-block" && block.end <= line.end) {
+						return unsupported("unbalanced-syntax");
+					}
+				}
+			}
 		}
 
 		return afterLine(statementIndent);
