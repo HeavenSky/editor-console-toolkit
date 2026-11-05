@@ -44,7 +44,7 @@ The log goes where the value already exists, chosen by the line the cursor is on
 | a line that opens a block that cannot hold statements: `switch`, `class`, Rust's `match` or `impl` | on the line before that statement, where the value has already been evaluated |
 | anything else                                                                                      | after the enclosing statement, however many lines it spans                    |
 
-When the syntax is ambiguous, for example a lone `{` that could open either a block or an object literal, the log lands after the whole statement: further out than you might want, but never syntactically broken. One undo takes back any placement you do not like.
+When the syntax is ambiguous, for example a lone `{` that could open either a block or an object literal, the log lands after the whole statement: further out than you might want, but never syntactically broken. When no safe spot can be guaranteed at all — for example an `if` without braces whose body is on the next line, or a function whose signature and body share one line — the command refuses with a warning and makes no edit. One undo takes back any placement you do not like.
 
 ## Supported languages
 
