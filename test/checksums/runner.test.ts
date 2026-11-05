@@ -226,12 +226,15 @@ describe("applyChecksums", () => {
 		const appRootB = "/apps/cursor";
 		const productA = product({ [CORE]: "stale" });
 		const productB = product({ [CORE]: "stale-b" });
-		const { fs } = fake({
-			[`${appRootA}/product.json`]: productA,
-			[`${appRootA}/out/${CORE}`]: PATCHED,
-			[`${appRootB}/product.json`]: productB,
-			[`${appRootB}/out/${CORE}`]: "patched core b",
-		}, path => path.startsWith("/apps/"));
+		const { fs } = fake(
+			{
+				[`${appRootA}/product.json`]: productA,
+				[`${appRootA}/out/${CORE}`]: PATCHED,
+				[`${appRootB}/product.json`]: productB,
+				[`${appRootB}/out/${CORE}`]: "patched core b",
+			},
+			path => path.startsWith("/apps/")
+		);
 
 		const stagedA = applyChecksums(context(fs, "darwin", appRootA)).stagedPath;
 		const stagedB = applyChecksums(context(fs, "darwin", appRootB)).stagedPath;
