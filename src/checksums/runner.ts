@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { dirname, join } from "node:path";
 
 import {
 	backupName,
@@ -32,12 +33,30 @@ interface Paths {
 	staged: string;
 }
 
+/**
+ * 暂存目录里按安装隔离的子目录名。
+ *
+ * 多个编辑器安装共用同一个暂存根目录, 不隔离就会互相复写: 安装 A 暂存过一次后, 安装 B 的
+ * 暂存会覆盖同一个文件, 而 A 先前提示的手动命令引用的还是这个路径, 照着执行会把 B 的
+ * `product.json` 写进 A。用安装路径的摘要而不是路径本身做目录名, 避免路径里的非法字符与
+ * 过长路径; 同一安装复写自己的暂存是安全的 —— 内容同源, 且命令总是本次提示的那条。
+ */
+function installKey(appRoot: string): string {
+	return createHash("sha1").update(appRoot).digest("hex").slice(0, 12);
+}
+
 function resolvePaths(ctx: RunContext): Paths {
 	return {
 		product: join(ctx.appRoot, "product.json"),
 		backup: join(ctx.appRoot, backupName(ctx.version)),
 		temp: join(ctx.appRoot, TEMP_NAME),
-		staged: join(ctx.stagingDir, "product.json"),
+		staged: join(
+			ctx.stagingDir,
+			installKey(ctx.appRoot),
+			// 版本也在隔离内: 编辑器升级后同一安装的旧暂存不该再被手动命令引用。
+			ctx.version.replace(/[^\w.-]/g, "_"),
+			"product.json"
+		),
 	};
 }
 
@@ -97,7 +116,7 @@ function stageForManualRun(
 	backupExists: boolean
 ): Outcome {
 	try {
-		ctx.fs.ensureDir(ctx.stagingDir);
+		ctx.fs.ensureDir(dirname(paths.staged));
 		ctx.fs.writeText(paths.staged, text);
 	} catch (error) {
 		return { kind: "write-failed", changed: 0, missing, cleaned: 0, detail: firstLine(error) };

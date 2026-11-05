@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
 import { backupName, computeChecksum } from "../../src/checksums/core";
@@ -15,12 +17,16 @@ const APP_ROOT = "/app";
 const STAGING = "/tmp/ect";
 const VERSION = "1.132.0";
 
+/** 与 `runner.ts` 的 `installKey` 同一规则; 不直接导出是为了钉住对外可见的路径形态。 */
+const installKey = (appRoot: string): string =>
+	createHash("sha1").update(appRoot).digest("hex").slice(0, 12);
+
 const CORE = "vs/workbench/workbench.desktop.main.js";
 const CORE_PATH = `${APP_ROOT}/out/${CORE}`;
 const PRODUCT = `${APP_ROOT}/product.json`;
 const BACKUP = `${APP_ROOT}/${backupName(VERSION)}`;
 const TEMP = `${APP_ROOT}/product.json.ect-tmp`;
-const STAGED = `${STAGING}/product.json`;
+const STAGED = `${STAGING}/${installKey(APP_ROOT)}/${VERSION}/product.json`;
 
 const encoder = new TextEncoder();
 
@@ -97,9 +103,9 @@ function fake(
 	return { fs, files, dirs };
 }
 
-const context = (fs: FsSeam, platform = "darwin"): RunContext => ({
+const context = (fs: FsSeam, platform = "darwin", appRoot = APP_ROOT): RunContext => ({
 	fs,
-	appRoot: APP_ROOT,
+	appRoot,
 	version: VERSION,
 	platform,
 	stagingDir: STAGING,
@@ -212,6 +218,29 @@ describe("applyChecksums", () => {
 
 		expect(applyChecksums(context(fs, "win32")).command).toBe(
 			`copy /Y "${STAGED}" "${PRODUCT}"`
+		);
+	});
+
+	it("两个安装共用暂存目录时各用各的暂存文件, 互不复写", () => {
+		const appRootA = "/apps/vscode";
+		const appRootB = "/apps/cursor";
+		const productA = product({ [CORE]: "stale" });
+		const productB = product({ [CORE]: "stale-b" });
+		const { fs } = fake({
+			[`${appRootA}/product.json`]: productA,
+			[`${appRootA}/out/${CORE}`]: PATCHED,
+			[`${appRootB}/product.json`]: productB,
+			[`${appRootB}/out/${CORE}`]: "patched core b",
+		}, path => path.startsWith("/apps/"));
+
+		const stagedA = applyChecksums(context(fs, "darwin", appRootA)).stagedPath;
+		const stagedB = applyChecksums(context(fs, "darwin", appRootB)).stagedPath;
+
+		expect(stagedA).not.toBe(stagedB);
+		// A 先前提示的手动命令引用 stagedA: 它必须仍然装着 A 的内容, 而不是被 B 复写。
+		expect(checksumsOf(fs.readText(stagedA as string))[CORE]).toBe(FRESH);
+		expect(checksumsOf(fs.readText(stagedB as string))[CORE]).toBe(
+			computeChecksum(encoder.encode("patched core b"))
 		);
 	});
 
