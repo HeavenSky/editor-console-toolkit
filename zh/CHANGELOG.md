@@ -2,6 +2,16 @@
 
 [English](../CHANGELOG.md) · **简体中文**
 
+## v0.0.10 2026-11-05 更安全的进程终止
+
+### Fixed
+
+- 端口工具箱现在在每次发信号前（包括强制终止）同时校验进程创建标识和命令行。即使 PID 被复用给运行同一条命令的新进程，该行也会跳过；创建标识不可用时，该行无法终止，请先刷新（[终止进程](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/ports.md#终止进程)）。
+- 强制终止前的身份查询失败或超时时，该行仍按失败报告，不再虚报已成功终止，端口占用者不会悄悄存活。
+- 搜索 `~/repo` 时会把 `~` 展开成你的主目录，因此搜索词能匹配端口工具箱里显示的路径（[搜索列表](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/ports.md#搜索列表)）。
+- 校验和工具箱按每个编辑器安装及其版本使用独立的暂存目录，多个安装不会再互相覆盖手动恢复命令引用的文件。
+- 日志插入能识别 JavaScript 和 TypeScript 正则字面量以及标识符中的 `$`，遇到不安全的插入位置时直接拒绝且不产生编辑，也不会把 `++` / `--` 后面的除号误判成正则；多光标插入复用同一次文档扫描（[什么时候不会插入](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/console-logs.md#什么时候不会插入)）。
+
 ## v0.0.9 2026-10-23 端口工具箱标题栏
 
 ### 新增

@@ -2,6 +2,16 @@
 
 **English** · [简体中文](./zh/CHANGELOG.md)
 
+## v0.0.10 2026-11-05 Safer process termination
+
+### Fixed
+
+- Port Toolkit now checks the process creation marker together with the command line before every signal, including a forced kill. A reused PID is skipped even when the new process runs the same command; if its creation marker is unavailable, the row cannot be terminated until you refresh ([terminate processes](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/ports.md#terminate-processes)).
+- A forced kill no longer reports success when the identity query fails or times out; the row stays reported as failed so the port owner cannot silently survive.
+- Searching for `~/repo` now expands `~` to your home directory, so the search matches the path shown in the Port Toolkit ([search the list](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/ports.md#search-the-list)).
+- Checksum Toolkit stages rewritten files in a separate folder for each editor installation and version, so multiple installations can no longer overwrite one another's manual recovery command.
+- Console Log insertion recognizes JavaScript and TypeScript regex literals and `$` in identifiers, refuses unsafe insertion points without making edits, and no longer mistakes a division after `++` / `--` for the start of a regex; multi-cursor insertion reuses one document scan ([when nothing is inserted](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/console-logs.md#when-nothing-is-inserted)).
+
 ## v0.0.9 2026-10-23 Port Toolkit title bar
 
 ### Added
