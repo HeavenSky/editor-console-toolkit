@@ -20,6 +20,7 @@ import {
 export interface CheckedTarget {
 	pid: number;
 	expectedCommand: string;
+	expectedCreated: string;
 	name: string;
 }
 
@@ -61,7 +62,7 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
 	let entries: ProcessEntry[] = [];
 	let scanError: string | undefined;
 	let search = "";
-	/** pid → 勾选那一刻的命令行。 */
+	/** pid → 勾选那一刻的命令行与创建标识。 */
 	const checked = new Map<number, CheckedTarget>();
 	let protectedPids: ReadonlySet<number> = new Set<number>();
 	let timer: ReturnType<typeof setInterval> | undefined;
@@ -173,6 +174,7 @@ export function createPortsView(context: vscode.ExtensionContext): PortsView {
 				checked.set(entry.pid, {
 					pid: entry.pid,
 					expectedCommand: entry.command,
+					expectedCreated: entry.created ?? "",
 					name: entry.name,
 				});
 			} else {

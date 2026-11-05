@@ -17,7 +17,11 @@ export interface Listener {
 export type Origin = "workspace" | "other" | "system";
 
 /** 不可终止的原因; 三者互斥, 优先级见 `annotateKillability`。 */
-export type BlockedReason = "unknown-pid" | "protected-ancestor" | "other-user";
+export type BlockedReason =
+	| "unknown-pid"
+	| "protected-ancestor"
+	| "identity-unavailable"
+	| "other-user";
 
 /** 一个监听着至少一个端口的进程。 */
 export interface ProcessEntry {
@@ -29,6 +33,8 @@ export interface ProcessEntry {
 	name: string;
 	/** 完整命令行。 */
 	command: string;
+	/** 创建标识; 只用于同一 PID 的复用比对, 不进 UI。 */
+	created: string | null;
 	cwd: string | null;
 	/** locale 无关的运行时长, 形如 `03-19:03:13`; 只作展示, 不参与计算。 */
 	etime: string;

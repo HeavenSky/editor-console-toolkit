@@ -1,5 +1,6 @@
 import type { Listener, ProcessEntry, RunCommand, ScanOptions } from "../types";
 import { mergeListeners, parseEndpoint } from "./address";
+import { parsePsIdentities } from "./identity";
 
 /**
  * macOS 采集: 3 次固定调用, 与端口数量无关。
@@ -7,9 +8,9 @@ import { mergeListeners, parseEndpoint } from "./address";
  * 1. `lsof -FpcnLRP` 一次拿到 pid, ppid(`R`), 完整进程名(`c`), 用户(`L`), 协议(`P`) 与
  *    地址:端口(`n`) —— 必须用 `-F`, 默认表格输出会把 COMMAND 列截断到 9 字符
  *    (`ControlCenter` 会变成 `ControlCe`);
- * 2. `ps -ww -o pid=,etime=,args=` 批量拿运行时长与完整命令行 —— `etime` 而不是 `lstart`,
- *    后者的格式随 locale 变;
- * 3. `lsof -d cwd` 批量拿工作目录。
+ * 2. `ps -ww -o pid=,etime=,args=` 批量拿运行时长与完整命令行;
+ * 3. `ps -ww -o pid=,lstart=` 批量拿创建标识, 终止前与命令行一起比对 PID 复用;
+ * 4. `lsof -d cwd` 批量拿工作目录。
  *
  * 后两步都接受逗号分隔的 PID 列表, 按 `PID_CHUNK` 分块以免超出 argv 长度上限。
  */
@@ -128,12 +129,17 @@ export async function scanDarwin(run: RunCommand, options: ScanOptions): Promise
 
 	const pids = processes.map(process => process.pid);
 	const details = new Map<number, { etime: string; command: string }>();
+	const identities = new Map<number, string>();
 	const cwds = new Map<number, string>();
 
 	for (const group of chunk(pids, PID_CHUNK)) {
 		const list = group.join(",");
 		const ps = await run("ps", ["-ww", "-o", "pid=,etime=,args=", "-p", list]);
 		for (const [pid, detail] of parsePsDetails(ps.stdout)) details.set(pid, detail);
+
+		const identitiesOutput = await run("ps", ["-ww", "-o", "pid=,lstart=", "-p", list]);
+		for (const [pid, identity] of parsePsIdentities(identitiesOutput.stdout))
+			identities.set(pid, identity);
 
 		const cwd = await run("lsof", ["-a", "-p", list, "-d", "cwd", "-Fpn"]);
 		for (const [pid, path] of parseLsofCwd(cwd.stdout)) cwds.set(pid, path);
@@ -147,6 +153,7 @@ export async function scanDarwin(run: RunCommand, options: ScanOptions): Promise
 			user: process.user,
 			name: process.name,
 			command: detail?.command ?? process.name,
+			created: identities.get(process.pid) ?? null,
 			cwd: cwds.get(process.pid) ?? null,
 			etime: detail?.etime ?? "",
 			listeners: mergeListeners(process.listeners),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseNetstat, parsePsDetails, parseSs, scanLinux } from "../../src/ports/scan/linux";
+import { parsePsIdentities } from "../../src/ports/scan/identity";
 import { fakeRun, fixture } from "./fakeRun";
 
 /**
@@ -71,6 +72,14 @@ describe("parsePsDetails", () => {
 	});
 });
 
+describe("parsePsIdentities", () => {
+	it("把 pid 后的 lstart 整体当创建标识", () => {
+		const identities = parsePsIdentities("41802 Sat Nov  1 12:33:00 2025\n901 bad?\n");
+		expect(identities.get(41802)).toBe("Sat Nov  1 12:33:00 2025");
+		expect(identities.get(901)).toBe("bad?");
+	});
+});
+
 describe("scanLinux", () => {
 	const responses = [
 		{
@@ -80,6 +89,15 @@ describe("scanLinux", () => {
 		{
 			match: (file: string, args: string[]) => file === "ss" && args[0] === "-ulnpH",
 			stdout: "",
+		},
+		{
+			match: (file: string, args: string[]) => file === "ps" && args.includes("pid=,lstart="),
+			stdout: [
+				" 1201 Sat Nov  1 03:13:12 2025",
+				" 1234 Sat Nov  1 03:13:12 2025",
+				"  901 Sat Nov  1 03:13:12 2025",
+				"41802 Sat Nov  1 12:33:00 2025",
+			].join("\n"),
 		},
 		{
 			match: (file: string) => file === "ps",
@@ -109,6 +127,7 @@ describe("scanLinux", () => {
 		expect(node?.ppid).toBe(41799);
 		expect(node?.user).toBe("sky");
 		expect(node?.command).toBe("node vite --host --port 5173");
+		expect(node?.created).toBe("Sat Nov  1 12:33:00 2025");
 	});
 
 	it("ss 不可用时回退 netstat", async () => {

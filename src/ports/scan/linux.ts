@@ -1,5 +1,6 @@
 import type { Listener, ProcessEntry, RunCommand, ScanOptions } from "../types";
 import { mergeListeners, parseEndpoint } from "./address";
+import { parsePsIdentities } from "./identity";
 
 /**
  * Linux 采集: `ss` 优先, 失败回退 `netstat`。
@@ -136,6 +137,7 @@ export async function scanLinux(run: RunCommand, options: ScanOptions): Promise<
 		...new Set(raw.map(item => item.pid).filter((pid): pid is number => pid !== null)),
 	];
 	const details = new Map<number, PsDetail>();
+	const identities = new Map<number, string>();
 	const cwds = new Map<number, string>();
 
 	for (const group of chunk(pids, PID_CHUNK)) {
@@ -147,6 +149,16 @@ export async function scanLinux(run: RunCommand, options: ScanOptions): Promise<
 			group.join(","),
 		]);
 		for (const [pid, detail] of parsePsDetails(ps.stdout)) details.set(pid, detail);
+
+		const identitiesOutput = await run("ps", [
+			"-ww",
+			"-o",
+			"pid=,lstart=",
+			"-p",
+			group.join(","),
+		]);
+		for (const [pid, identity] of parsePsIdentities(identitiesOutput.stdout))
+			identities.set(pid, identity);
 
 		// `readlink` 走同一个子进程接缝, 所以 src/ 里不需要 node:fs。
 		for (const pid of group) {
@@ -172,6 +184,7 @@ export async function scanLinux(run: RunCommand, options: ScanOptions): Promise<
 				user: "",
 				name: item.name,
 				command: item.name,
+				created: null,
 				cwd: null,
 				etime: "",
 				listeners: [item.listener],
@@ -195,6 +208,7 @@ export async function scanLinux(run: RunCommand, options: ScanOptions): Promise<
 			user: detail?.user ?? "",
 			name: item.name,
 			command: detail?.command ?? item.name,
+			created: identities.get(item.pid) ?? null,
 			cwd: cwds.get(item.pid) ?? null,
 			etime: detail?.etime ?? "",
 			listeners: [item.listener],

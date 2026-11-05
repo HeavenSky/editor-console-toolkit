@@ -21,6 +21,7 @@ const entry = (over: Partial<ProcessEntry>): ProcessEntry => ({
 	user: "sky",
 	name: "node",
 	command: "node server.js",
+	created: "created",
 	cwd: null,
 	etime: "12:33",
 	listeners: [tcp(3000)],
@@ -210,6 +211,16 @@ describe("annotateKillability", () => {
 		const [result] = annotateKillability([entry({ pid: 28187 })], protectedPids, "sky");
 		expect(result.killable).toBe(false);
 		expect(result.blockedReason).toBe("protected-ancestor");
+	});
+
+	it("创建标识缺失时不可终止", () => {
+		const [result] = annotateKillability(
+			[entry({ pid: 500, created: null })],
+			protectedPids,
+			"sky"
+		);
+		expect(result.killable).toBe(false);
+		expect(result.blockedReason).toBe("identity-unavailable");
 	});
 
 	it("其他用户的进程不可终止但仍列出", () => {

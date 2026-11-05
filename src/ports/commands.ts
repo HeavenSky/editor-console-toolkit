@@ -70,6 +70,7 @@ async function runKill(targets: CheckedTarget[], view: PortsView): Promise<void>
 	const killTargets: KillTarget[] = targets.map(target => ({
 		pid: target.pid,
 		expectedCommand: target.expectedCommand,
+		expectedCreated: target.expectedCreated,
 		name: target.name,
 	}));
 
@@ -134,7 +135,14 @@ export function registerPortCommands(context: vscode.ExtensionContext, view: Por
 				return undefined;
 			}
 			return runKill(
-				[{ pid: entry.pid, expectedCommand: entry.command, name: entry.name }],
+				[
+					{
+						pid: entry.pid,
+						expectedCommand: entry.command,
+						expectedCreated: entry.created ?? "",
+						name: entry.name,
+					},
+				],
 				view
 			);
 		}),

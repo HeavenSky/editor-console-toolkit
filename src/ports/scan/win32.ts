@@ -26,6 +26,7 @@ interface RawProcess {
 	CommandLine: string | null;
 	UserName: string | null;
 	Elapsed: string | null;
+	Created: string | null;
 }
 
 /**
@@ -76,6 +77,7 @@ export function buildEntries(
 			user: process?.UserName ?? "",
 			name: process?.Name ?? "",
 			command: process?.CommandLine ?? process?.Name ?? "",
+			created: process?.Created ?? null,
 			cwd: null,
 			etime: process?.Elapsed ?? "",
 			listeners: [listener],
@@ -97,13 +99,15 @@ const POWERSHELL_ARGS = ["-NoProfile", "-NonInteractive", "-Command"];
 /**
  * Win32_Process 没有 CommandLine 之外的所属用户属性, 用户名只能通过 GetOwner 方法拿,
  * 因此这段脚本逐进程调用它; 由于只查监听端口的那几个 PID, 数量很小。
- * Elapsed 由 PowerShell 算好并格式化成与 POSIX `etime` 相同的形状, 解析侧不做时间运算。
+ * Elapsed 由 PowerShell 算好并格式化成与 POSIX `etime` 相同的形状; Created 固定成 ISO 8601,
+ * 终止前作为创建标识参与比对。
  */
 function processScript(pids: number[]): string {
 	const filter = pids.map(pid => `ProcessId=${pid}`).join(" or ");
 	return [
 		`Get-CimInstance Win32_Process -Filter '${filter}' | ForEach-Object {`,
 		"  $owner = try { (Invoke-CimMethod -InputObject $_ -MethodName GetOwner).User } catch { $null };",
+		"  $created = if ($_.CreationDate) { $_.CreationDate.ToString('o') } else { $null };",
 		"  $span = if ($_.CreationDate) { (Get-Date) - $_.CreationDate } else { $null };",
 		"  $elapsed = if ($span -eq $null) { $null }",
 		'    elseif ($span.Days -gt 0) { "{0:00}-{1:00}:{2:00}:{3:00}" -f $span.Days,$span.Hours,$span.Minutes,$span.Seconds }',
@@ -112,6 +116,7 @@ function processScript(pids: number[]): string {
 		"    ProcessId = $_.ProcessId; ParentProcessId = $_.ParentProcessId;",
 		"    Name = $_.Name; CommandLine = $_.CommandLine;",
 		"    UserName = $owner; Elapsed = $elapsed",
+		"    Created = $created",
 		"  }",
 		"} | ConvertTo-Json -Compress -Depth 3",
 	].join("\n");

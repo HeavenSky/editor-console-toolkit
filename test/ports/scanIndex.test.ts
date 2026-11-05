@@ -10,6 +10,7 @@ const entry = (over: Partial<ProcessEntry>): ProcessEntry => ({
 	user: "sky",
 	name: "node",
 	command: "node server.js",
+	created: "created",
 	cwd: null,
 	etime: "12:33",
 	listeners: [],
@@ -32,16 +33,19 @@ describe("aggregate", () => {
 		const merged = aggregate([
 			entry({
 				pid: 7,
+				created: null,
 				cwd: null,
 				listeners: [{ protocol: "TCP", address: "0.0.0.0", port: 1 }],
 			}),
 			entry({
 				pid: 7,
+				created: "created-2",
 				cwd: "/srv/app",
 				listeners: [{ protocol: "TCP", address: "0.0.0.0", port: 2 }],
 			}),
 		]);
 		expect(merged[0].cwd).toBe("/srv/app");
+		expect(merged[0].created).toBe("created-2");
 	});
 
 	it("pid 为 null 的条目不被合并", () => {

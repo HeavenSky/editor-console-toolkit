@@ -137,6 +137,7 @@ export function annotateKillability(
 
 		if (entry.pid === null) blockedReason = "unknown-pid";
 		else if (protectedPids.has(entry.pid)) blockedReason = "protected-ancestor";
+		else if (entry.created === null) blockedReason = "identity-unavailable";
 		else if (currentUser !== "" && entry.user !== "" && entry.user !== currentUser) {
 			blockedReason = "other-user";
 		}

@@ -44,6 +44,7 @@ describe("buildEntries", () => {
 			'"C:\\Program Files\\nodejs\\node.exe" vite --host, --port 5173'
 		);
 		expect(node?.name).toBe("node.exe");
+		expect(node?.created).toBe("2025-11-01T12:33:00.0000000+08:00");
 	});
 
 	it("按 OwningProcess 聚合并合并 v4/v6 同端口", () => {
@@ -68,6 +69,13 @@ describe("buildEntries", () => {
 		const entries = buildEntries(tcp, udp, processes);
 		expect(entries.find(entry => entry.pid === 880)?.user).toBe("NETWORK SERVICE");
 		expect(entries.find(entry => entry.pid === 41802)?.etime).toBe("00:12:33");
+	});
+
+	it("带上 ISO 格式的创建标识", () => {
+		const entries = buildEntries(tcp, udp, processes);
+		expect(entries.find(entry => entry.pid === 880)?.created).toBe(
+			"2025-11-01T03:13:12.0000000+08:00"
+		);
 	});
 
 	it("缺少对应进程信息时不丢弃端点", () => {

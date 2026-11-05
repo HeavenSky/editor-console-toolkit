@@ -35,6 +35,8 @@ function blockedLabel(entry: ProcessEntry): string | undefined {
 			return vscode.l10n.t("another user, needs elevation");
 		case "unknown-pid":
 			return vscode.l10n.t("owner unknown");
+		case "identity-unavailable":
+			return vscode.l10n.t("process identity unavailable, refresh first");
 		default:
 			return undefined;
 	}

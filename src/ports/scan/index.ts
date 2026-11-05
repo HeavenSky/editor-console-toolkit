@@ -36,6 +36,7 @@ export function aggregate(entries: ProcessEntry[]): ProcessEntry[] {
 		// 同一 pid 的多条记录里, 信息更全的那条胜出。
 		if (!existing.cwd && entry.cwd) existing.cwd = entry.cwd;
 		if (!existing.command && entry.command) existing.command = entry.command;
+		if (existing.created === null && entry.created) existing.created = entry.created;
 	}
 
 	const merged = [...byPid.values(), ...unknown];

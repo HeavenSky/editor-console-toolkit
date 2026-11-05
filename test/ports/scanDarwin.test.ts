@@ -6,9 +6,11 @@ import {
 	parsePsDetails,
 	scanDarwin,
 } from "../../src/ports/scan/darwin";
+import { parsePsIdentities } from "../../src/ports/scan/identity";
 import { fakeRun, fixture } from "./fakeRun";
 
 const lsof = fixture("darwin-lsof.txt");
+const psIdentities = fixture("darwin-ps-identity.txt");
 
 describe("parseLsofListeners", () => {
 	it("把 IPv4 与 IPv6 的同端口视为两条原始记录, 交由聚合合并", () => {
@@ -66,6 +68,18 @@ describe("parsePsDetails", () => {
 	});
 });
 
+describe("parsePsIdentities", () => {
+	it("把 pid 后的 lstart 整体当创建标识, 不解析 locale 格式", () => {
+		const identities = parsePsIdentities(psIdentities);
+		expect(identities.get(41802)).toBe("Sat Nov  1 12:33:00 2025");
+		expect(identities.get(28187)).toBe("Sun Nov  2 03:04:05 2025");
+	});
+
+	it("缺 lstart 的行不产生标识", () => {
+		expect(parsePsIdentities("41802\n")).toEqual(new Map());
+	});
+});
+
 describe("parseLsofCwd", () => {
 	it("把 pid 映射到工作目录", () => {
 		const cwds = parseLsofCwd(fixture("darwin-cwd.txt"));
@@ -80,6 +94,10 @@ describe("scanDarwin", () => {
 			match: (file: string, args: string[]) => file === "lsof" && args.includes("-FpcnLRP"),
 			stdout: lsof,
 		},
+		{
+			match: (file: string, args: string[]) => file === "ps" && args.includes("pid=,lstart="),
+			stdout: psIdentities,
+		},
 		{ match: (file: string) => file === "ps", stdout: fixture("darwin-ps.txt") },
 		{
 			match: (file: string, args: string[]) => file === "lsof" && args.includes("cwd"),
@@ -87,10 +105,10 @@ describe("scanDarwin", () => {
 		},
 	];
 
-	it("固定 3 次调用, 与端口数量无关", async () => {
+	it("固定 4 次调用, 与端口数量无关", async () => {
 		const { run, calls } = fakeRun(responses);
 		await scanDarwin(run, { includeUdp: false });
-		expect(calls).toHaveLength(3);
+		expect(calls).toHaveLength(4);
 	});
 
 	it("合成完整条目并合并 v4/v6 重复项", async () => {
@@ -101,8 +119,10 @@ describe("scanDarwin", () => {
 		expect(rapportd?.listeners).toHaveLength(1);
 		expect(rapportd?.command).toBe("/usr/libexec/rapportd");
 		expect(rapportd?.etime).toBe("03-19:03:13");
+		expect(rapportd?.created).toBe("Sat Nov  1 03:13:12 2025");
 
 		const node = entries.find(entry => entry.pid === 41802);
+		expect(node?.created).toBe("Sat Nov  1 12:33:00 2025");
 		expect(node?.cwd).toBe("/Users/sky/repo/web/apps/site");
 		expect(node?.listeners.map(listener => listener.port)).toEqual([5173, 24678, 41234]);
 	});
@@ -124,7 +144,7 @@ describe("scanDarwin", () => {
 	});
 
 	it("PID 数量超过分块上限时按块调用", async () => {
-		// 300 个进程 → ps 与 lsof cwd 各分 2 块, 加上首次 lsof 共 5 次调用。
+		// 300 个进程 → 命令行, 创建标识与 lsof cwd 各分 2 块, 加上首次 lsof 共 7 次调用。
 		const many = Array.from(
 			{ length: 300 },
 			(_, index) => `p${1000 + index}\nR1\ncproc\nLsky\nf3\nPTCP\nn*:${9000 + index}`
@@ -138,6 +158,6 @@ describe("scanDarwin", () => {
 			{ match: () => true, stdout: "" },
 		]);
 		await scanDarwin(run, { includeUdp: false });
-		expect(calls).toHaveLength(5);
+		expect(calls).toHaveLength(7);
 	});
 });

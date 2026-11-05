@@ -61,10 +61,11 @@ A filter does not clear your ticks: a process ticked before you filtered stays t
 
 To stop a single process, use the ✕ that appears when you hover its row.
 
-Each process is first asked to shut down (`SIGTERM`; `taskkill` on Windows) and is force-killed only if it is still alive after `editorConsoleToolkit.ports.killTimeout`. Four safeguards apply:
+Each process is first asked to shut down (`SIGTERM`; `taskkill` on Windows) and is force-killed only if it is still alive after `editorConsoleToolkit.ports.killTimeout`. Five safeguards apply:
 
 - Child processes are left alone; only the process on the row is signalled.
-- The command line is read again just before each signal, including the forced kill. If the PID now belongs to a different command, the row is skipped and reported as skipped; if that check itself fails (timeout, missing tool), the row is reported as failed instead of assumed dead.
+- The command line and a process creation marker are read again just before each signal, including the forced kill. If the PID now belongs to a different process — even one running the same command — the row is skipped and reported as skipped. If that check fails or the creation marker is unavailable, the row is reported as failed instead of assumed dead; refresh and try again.
+- The check narrows the reuse race to the instant between reading the identity and delivering the signal; it cannot remove that tiny system-level window.
 - The editor's own processes show a lock icon and have no checkbox. They are found from the live process tree, so this holds in any VS Code–compatible editor.
 - Processes owned by another user are listed but cannot be terminated; the extension never elevates privileges.
 

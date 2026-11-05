@@ -11,6 +11,7 @@ import type { RunCommand } from "../../src/ports/types";
 const target = (over: Partial<KillTarget> = {}): KillTarget => ({
 	pid: 41802,
 	expectedCommand: "node vite --host",
+	expectedCreated: "start-1",
 	name: "node",
 	...over,
 });
@@ -30,6 +31,9 @@ function harness(options: {
 	/** 每次 `ps`/PowerShell 身份读取返回的命令行; 超出后沿用最后一项。 */
 	currentCommand?: string | null;
 	commandSequence?: Array<string | null>;
+	/** 每次 POSIX 创建标识查询返回的创建时间; PowerShell 读取则随命令行一起返回。 */
+	currentCreated?: string | null;
+	createdSequence?: Array<string | null>;
 	/** 身份查询本身失败时抛出的错误。 */
 	runThrows?: string;
 	/** 存活探测抛出的错误消息; 无 errno 的错误表示探测失败而非进程消失。 */
@@ -45,9 +49,24 @@ function harness(options: {
 	const waited: number[] = [];
 	let realSignalCount = 0;
 	let identityReads = 0;
+	let createdReads = 0;
 
 	const run: RunCommand = async (file, args) => {
 		commands.push({ file, args });
+		if (file === "ps" && args.includes("lstart=")) {
+			if (options.runThrows !== undefined) throw new Error(options.runThrows);
+			createdReads += 1;
+			let created: string | null | undefined =
+				options.currentCreated === undefined ? "start-1" : options.currentCreated;
+			if (options.createdSequence !== undefined) {
+				created =
+					options.createdSequence[
+						Math.min(createdReads - 1, options.createdSequence.length - 1)
+					];
+			}
+			return { stdout: created === null ? "" : `${created}\n`, stderr: "", code: 0 };
+		}
+
 		if (file === "ps" || file === "powershell.exe") {
 			if (options.runThrows !== undefined) throw new Error(options.runThrows);
 			identityReads += 1;
@@ -55,7 +74,25 @@ function harness(options: {
 				options.currentCommand === undefined ? "node vite --host" : options.currentCommand;
 			if (options.commandSequence !== undefined) {
 				command =
-					options.commandSequence[Math.min(identityReads - 1, options.commandSequence.length - 1)];
+					options.commandSequence[
+						Math.min(identityReads - 1, options.commandSequence.length - 1)
+					];
+			}
+			const created =
+				options.createdSequence === undefined
+					? (options.currentCreated ?? "start-1")
+					: (options.createdSequence[
+							Math.min(identityReads - 1, options.createdSequence.length - 1)
+						] ?? "");
+			if (file === "powershell.exe") {
+				return {
+					stdout:
+						command === null
+							? ""
+							: JSON.stringify({ Command: command, Created: created || null }),
+					stderr: "",
+					code: 0,
+				};
 			}
 			return { stdout: command === null ? "" : `${command}\n`, stderr: "", code: 0 };
 		}
@@ -108,6 +145,14 @@ describe("killProcesses 的 PID 复用校验", () => {
 		expect(report.detail).toBe("node other-thing.js");
 	});
 
+	it("命令行相同但创建标识不同时不发出任何信号", async () => {
+		const h = harness({ currentCreated: "start-2" });
+		const [report] = await killProcesses([target()], h.deps);
+
+		expect(report.outcome).toBe("skipped-changed");
+		expect(h.signals).toEqual([]);
+	});
+
 	it("进程已经不存在时视为已终止, 不发信号", async () => {
 		const h = harness({ currentCommand: null });
 		const [report] = await killProcesses([target()], h.deps);
@@ -135,6 +180,17 @@ describe("killProcesses 的 PID 复用校验", () => {
 		});
 		const [report] = await killProcesses([target()], h.deps);
 		expect(report.outcome).toBe("terminated");
+		expect(h.signals.map(item => item.signal)).toEqual(["SIGTERM"]);
+	});
+
+	it("升级 SIGKILL 前创建标识变化时不再强杀", async () => {
+		const h = harness({
+			createdSequence: ["start-1", "start-2"],
+			dieAfter: Number.POSITIVE_INFINITY,
+		});
+		const [report] = await killProcesses([target()], h.deps);
+
+		expect(report.outcome).toBe("skipped-changed");
 		expect(h.signals.map(item => item.signal)).toEqual(["SIGTERM"]);
 	});
 });
@@ -232,6 +288,9 @@ describe("killProcesses 在 Windows 上", () => {
 		const h = harness({ dieAfter: 1, platform: "win32" });
 		await killProcesses([target()], h.deps);
 		expect(h.commands[0].file).toBe("powershell.exe");
+		const script = h.commands[0].args[3];
+		expect(script).toContain("CreationDate");
+		expect(script).toContain("ToString('o')");
 	});
 });
 

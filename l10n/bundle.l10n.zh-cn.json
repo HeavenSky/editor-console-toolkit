@@ -28,6 +28,7 @@
 	"{0} changed since you checked it, skipped.": "{0} 在勾选之后已发生变更, 已跳过.",
 	"{0} could not be terminated.": "{0} 无法终止.",
 	"This process cannot be terminated.": "该进程无法终止.",
+	"process identity unavailable, refresh first": "进程创建标识不可用, 请先刷新.",
 	"Filter by process name, command, PID, working directory or port": "按进程名, 命令行, PID, 工作目录或端口号过滤",
 	"for example 3000, node, ~/repo": "例如 3000, node, ~/repo",
 	"Search": "搜索",
