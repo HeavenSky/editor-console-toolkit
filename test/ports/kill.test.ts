@@ -23,11 +23,19 @@ interface Harness {
 }
 
 /**
- * @param alive 进程在收到第 N 次信号后是否仍存活; `dieAfter` 表示第几次 SIGTERM/SIGKILL 之后消失,
+ * @param dieAfter 进程在收到第 N 次信号后是否仍存活; `dieAfter` 表示第几次 SIGTERM/SIGKILL 之后消失,
  *              `Infinity` 表示怎么都不死。
  */
 function harness(options: {
+	/** 每次 `ps`/PowerShell 身份读取返回的命令行; 超出后沿用最后一项。 */
 	currentCommand?: string | null;
+	commandSequence?: Array<string | null>;
+	/** 身份查询本身失败时抛出的错误。 */
+	runThrows?: string;
+	/** 存活探测抛出的错误消息; 无 errno 的错误表示探测失败而非进程消失。 */
+	probeThrows?: string;
+	/** 与 `probeThrows` 搭配的 errno; `ESRCH` 表示进程消失, `EPERM` 表示无权发信号。 */
+	probeErrno?: string;
 	dieAfter?: number;
 	platform?: NodeJS.Platform;
 	signalThrows?: boolean;
@@ -36,12 +44,19 @@ function harness(options: {
 	const commands: Array<{ file: string; args: string[] }> = [];
 	const waited: number[] = [];
 	let realSignalCount = 0;
+	let identityReads = 0;
 
 	const run: RunCommand = async (file, args) => {
 		commands.push({ file, args });
 		if (file === "ps" || file === "powershell.exe") {
-			const command =
+			if (options.runThrows !== undefined) throw new Error(options.runThrows);
+			identityReads += 1;
+			let command: string | null | undefined =
 				options.currentCommand === undefined ? "node vite --host" : options.currentCommand;
+			if (options.commandSequence !== undefined) {
+				command =
+					options.commandSequence[Math.min(identityReads - 1, options.commandSequence.length - 1)];
+			}
 			return { stdout: command === null ? "" : `${command}\n`, stderr: "", code: 0 };
 		}
 		if (file === "taskkill") realSignalCount += 1;
@@ -52,8 +67,15 @@ function harness(options: {
 		run,
 		sendSignal: (pid, signal) => {
 			if (signal === 0) {
-				// 存活探测: 发够了信号之后就认为进程已消失。
-				if (realSignalCount >= (options.dieAfter ?? 1)) throw new Error("ESRCH");
+				// 存活探测: 抛 ESRCH 形态的错误表示进程已消失; probeThrows 模拟探测本身失败。
+				if (options.probeThrows !== undefined) {
+					throw Object.assign(new Error(options.probeThrows), {
+						code: options.probeErrno,
+					});
+				}
+				if (realSignalCount >= (options.dieAfter ?? 1)) {
+					throw Object.assign(new Error("process not found"), { code: "ESRCH" });
+				}
 				return;
 			}
 			signals.push({ pid, signal });
@@ -91,6 +113,63 @@ describe("killProcesses 的 PID 复用校验", () => {
 		const [report] = await killProcesses([target()], h.deps);
 		expect(report.outcome).toBe("terminated");
 		expect(h.signals).toEqual([]);
+	});
+
+	it("升级 SIGKILL 前 PID 被复用时停止发送信号", async () => {
+		const h = harness({
+			commandSequence: ["node vite --host", "node unrelated.js"],
+			dieAfter: Number.POSITIVE_INFINITY,
+		});
+		const [report] = await killProcesses([target()], h.deps);
+
+		expect(report.outcome).toBe("skipped-changed");
+		expect(report.detail).toBe("node unrelated.js");
+		// 只发过 SIGTERM, SIGKILL 必须没有落到新身份头上。
+		expect(h.signals.map(item => item.signal)).toEqual(["SIGTERM"]);
+	});
+
+	it("升级 SIGKILL 前进程已消失时不再强杀", async () => {
+		const h = harness({
+			commandSequence: ["node vite --host", null],
+			dieAfter: Number.POSITIVE_INFINITY,
+		});
+		const [report] = await killProcesses([target()], h.deps);
+		expect(report.outcome).toBe("terminated");
+		expect(h.signals.map(item => item.signal)).toEqual(["SIGTERM"]);
+	});
+});
+
+describe("killProcesses 的查询与探测失败处理", () => {
+	it("身份查询失败时报 failed 并保留原因, 不发信号", async () => {
+		const h = harness({ runThrows: "ps 执行失败: timeout" });
+		const [report] = await killProcesses([target()], h.deps);
+
+		expect(report.outcome).toBe("failed");
+		expect(report.detail).toContain("timeout");
+		expect(h.signals).toEqual([]);
+	});
+
+	it("存活探测失败(无 errno)时报 failed, 不升级强杀", async () => {
+		const h = harness({ probeThrows: "ps timed out", dieAfter: 1 });
+		const [report] = await killProcesses([target()], h.deps);
+
+		expect(report.outcome).toBe("failed");
+		expect(report.detail).toContain("ps timed out");
+		expect(h.signals.map(item => item.signal)).toEqual(["SIGTERM"]);
+	});
+
+	it("EPERM 探测视为仍然存活, 照常走升级流程", async () => {
+		const h = harness({
+			probeThrows: "EPERM",
+			probeErrno: "EPERM",
+			dieAfter: Number.POSITIVE_INFINITY,
+		});
+		const [report] = await killProcesses([target()], h.deps);
+
+		// EPERM 表示进程存在: 探测一直返回存活, 最终按 SIGKILL 无效处理。
+		expect(report.outcome).toBe("failed");
+		expect(report.detail).toBe("process survived SIGKILL");
+		expect(h.signals.map(item => item.signal)).toEqual(["SIGTERM", "SIGKILL"]);
 	});
 });
 

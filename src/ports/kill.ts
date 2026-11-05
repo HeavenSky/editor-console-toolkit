@@ -8,7 +8,8 @@ import type { RunCommand, SendSignal } from "./types";
  * "勾了哪几行就杀哪几个进程"必须可预测。
  *
  * 发信号前一定重新校验命令行: 从用户勾选到点确认之间进程可能已经退出, 而 PID 会被系统
- * 复用 —— 不校验就有杀错进程的风险。
+ * 复用 —— 不校验就有杀错进程的风险。SIGTERM 无效升级到 SIGKILL 之前还要再校验一次,
+ * 因为最长 `killTimeout` 的等待窗口里 PID 同样可能被复用。
  */
 
 /** 存活探测间隔; 与 `killTimeout` 一起决定升级到 SIGKILL 的时机。 */
@@ -29,7 +30,7 @@ export type KillOutcome =
 	| "killed"
 	/** 命令行与勾选时不一致, 未发出任何信号。 */
 	| "skipped-changed"
-	/** 信号发出了但进程仍在, 或发信号本身失败。 */
+	/** 信号发出了但进程仍在, 或查询与发信号本身失败。 */
 	| "failed";
 
 export interface KillReport {
@@ -49,59 +50,97 @@ export interface KillDeps {
 
 const POWERSHELL_ARGS = ["-NoProfile", "-NonInteractive", "-Command"];
 
-/** 读取进程当前的完整命令行; 进程已不存在时返回 null。 */
+/**
+ * 进程身份查询的三种结果。
+ *
+ * "不存在"与"查询失败"必须分开: 把超时, 工具缺失或权限不足当成已退出, 会虚报终止成功,
+ * 而端口实际上仍被占用。
+ */
+type CommandRead =
+	| { kind: "present"; command: string }
+	| { kind: "absent" }
+	| { kind: "failed"; detail: string };
+
+/** 读取进程当前的完整命令行; 进程确定不存在时返回 absent, 查询本身失败时返回 failed。 */
 async function readCommand(
 	pid: number,
 	run: RunCommand,
 	platform: NodeJS.Platform
-): Promise<string | null> {
+): Promise<CommandRead> {
 	try {
+		let stdout: string;
 		if (platform === "win32") {
 			const script = `(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').CommandLine`;
-			const { stdout } = await run("powershell.exe", [...POWERSHELL_ARGS, script]);
-			const command = stdout.trim();
-			return command === "" ? null : command;
+			const result = await run("powershell.exe", [...POWERSHELL_ARGS, script]);
+			stdout = result.stdout;
+		} else {
+			const result = await run("ps", ["-ww", "-o", "args=", "-p", String(pid)]);
+			stdout = result.stdout;
 		}
-		const { stdout } = await run("ps", ["-ww", "-o", "args=", "-p", String(pid)]);
 		const command = stdout.trim();
-		return command === "" ? null : command;
-	} catch {
-		return null;
+		// `ps -p` 对不存在的 PID 退出非 0 且无输出, PowerShell 查不到时输出空串 —— 两者都归为 absent。
+		return command === "" ? { kind: "absent" } : { kind: "present", command };
+	} catch (error) {
+		return {
+			kind: "failed",
+			detail: error instanceof Error ? error.message : String(error),
+		};
 	}
 }
 
-/** `process.kill(pid, 0)` 不发信号, 只探测存活; 抛错即进程已不存在。 */
-function isAlive(pid: number, sendSignal: SendSignal): boolean {
+/** 存活探测的三种结果。 */
+type Probe = { state: "alive" | "dead"; error?: Error };
+
+/**
+ * `process.kill(pid, 0)` 不发信号, 只探测存活。
+ *
+ * `ESRCH` 是确定的不存在; `EPERM` 表示进程存在但无权发信号, 同样算存活; 其余错误无法判定,
+ * 按"仍然存活"保守处理并保留原因 —— 只有确认进程不存在时才按已退出处理。
+ */
+function probeAlive(pid: number, sendSignal: SendSignal): Probe {
 	try {
 		sendSignal(pid, 0);
-		return true;
-	} catch {
-		return false;
+		return { state: "alive" };
+	} catch (error) {
+		const code = (error as { code?: unknown } | null)?.code;
+		if (code === "ESRCH") return { state: "dead" };
+		if (code === "EPERM") return { state: "alive" };
+		return {
+			state: "alive",
+			error: error instanceof Error ? error : new Error(String(error)),
+		};
 	}
 }
 
-/** 等到进程消失或超时; 返回是否已消失。 */
+/** 等到进程消失或超时; `error` 非空表示探测本身失败, 存活状态不可信。 */
 async function waitForExit(
 	pid: number,
 	deps: Pick<KillDeps, "sendSignal" | "wait" | "killTimeout">
-): Promise<boolean> {
+): Promise<Probe> {
 	let waited = 0;
 	while (waited < deps.killTimeout) {
-		if (!isAlive(pid, deps.sendSignal)) return true;
+		const probe = probeAlive(pid, deps.sendSignal);
+		if (probe.state === "dead") return probe;
+		if (probe.error !== undefined) return probe;
 		await deps.wait(POLL_INTERVAL_MS);
 		waited += POLL_INTERVAL_MS;
 	}
-	return !isAlive(pid, deps.sendSignal);
+	return probeAlive(pid, deps.sendSignal);
 }
 
 async function killOne(target: KillTarget, deps: KillDeps): Promise<KillReport> {
-	const actual = await readCommand(target.pid, deps.run, deps.platform);
+	const firstRead = await readCommand(target.pid, deps.run, deps.platform);
+
+	// 查询本身失败 —— 无法校验身份, 宁可报失败也不盲发信号。
+	if (firstRead.kind === "failed") {
+		return { target, outcome: "failed", detail: firstRead.detail };
+	}
 
 	// 进程已经不在了 —— 目的已达成, 不必再发信号。
-	if (actual === null) return { target, outcome: "terminated" };
+	if (firstRead.kind === "absent") return { target, outcome: "terminated" };
 
-	if (actual !== target.expectedCommand) {
-		return { target, outcome: "skipped-changed", detail: actual };
+	if (firstRead.command !== target.expectedCommand) {
+		return { target, outcome: "skipped-changed", detail: firstRead.command };
 	}
 
 	try {
@@ -118,7 +157,20 @@ async function killOne(target: KillTarget, deps: KillDeps): Promise<KillReport> 
 		};
 	}
 
-	if (await waitForExit(target.pid, deps)) return { target, outcome: "terminated" };
+	let probe = await waitForExit(target.pid, deps);
+	if (probe.error !== undefined) return { target, outcome: "failed", detail: probe.error.message };
+	if (probe.state === "dead") return { target, outcome: "terminated" };
+
+	// 升级 SIGKILL 前重新校验身份: 等待窗口最长有 killTimeout 秒, PID 可能已
+	// 被系统复用给别的进程。身份改变或无法读取时停止发送信号。
+	const secondRead = await readCommand(target.pid, deps.run, deps.platform);
+	if (secondRead.kind === "failed") {
+		return { target, outcome: "failed", detail: secondRead.detail };
+	}
+	if (secondRead.kind === "absent") return { target, outcome: "terminated" };
+	if (secondRead.command !== target.expectedCommand) {
+		return { target, outcome: "skipped-changed", detail: secondRead.command };
+	}
 
 	try {
 		if (deps.platform === "win32") {
@@ -134,7 +186,9 @@ async function killOne(target: KillTarget, deps: KillDeps): Promise<KillReport> 
 		};
 	}
 
-	if (await waitForExit(target.pid, deps)) return { target, outcome: "killed" };
+	probe = await waitForExit(target.pid, deps);
+	if (probe.error !== undefined) return { target, outcome: "failed", detail: probe.error.message };
+	if (probe.state === "dead") return { target, outcome: "killed" };
 	return { target, outcome: "failed", detail: "process survived SIGKILL" };
 }
 

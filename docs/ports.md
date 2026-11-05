@@ -64,7 +64,7 @@ To stop a single process, use the ✕ that appears when you hover its row.
 Each process is first asked to shut down (`SIGTERM`; `taskkill` on Windows) and is force-killed only if it is still alive after `editorConsoleToolkit.ports.killTimeout`. Four safeguards apply:
 
 - Child processes are left alone; only the process on the row is signalled.
-- The command line is read again just before signalling. If the PID now belongs to a different command, the row is skipped and reported as skipped.
+- The command line is read again just before each signal, including the forced kill. If the PID now belongs to a different command, the row is skipped and reported as skipped; if that check itself fails (timeout, missing tool), the row is reported as failed instead of assumed dead.
 - The editor's own processes show a lock icon and have no checkbox. They are found from the live process tree, so this holds in any VS Code–compatible editor.
 - Processes owned by another user are listed but cannot be terminated; the extension never elevates privileges.
 
