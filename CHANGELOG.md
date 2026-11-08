@@ -2,6 +2,12 @@
 
 **English** · [简体中文](./zh/CHANGELOG.md)
 
+## v0.0.11 2026-11-08 Docs: settings live in one place
+
+### Changed
+
+- Docs: Port Toolkit settings are no longer duplicated as a table in [the docs](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/docs/ports.md); each setting's meaning, accepted range and default is shown in the Settings UI and on the marketplace page's Feature Contributions tab, rendered straight from the extension manifest. No extension behavior changed in this release.
+
 ## v0.0.10 2026-11-05 Safer process termination
 
 ### Fixed

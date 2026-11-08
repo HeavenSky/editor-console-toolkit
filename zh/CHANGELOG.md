@@ -2,6 +2,12 @@
 
 [English](../CHANGELOG.md) · **简体中文**
 
+## v0.0.11 2026-11-08 文档：设置只在一处呈现
+
+### 变更
+
+- 文档：端口工具箱的设置不再在[文档页](https://github.com/HeavenSky/editor-console-toolkit/blob/HEAD/zh/docs/ports.md#调整刷新与过滤)里重复成表；每一项的说明、取值范围与默认值都在设置界面和市场页的 Feature Contributions 标签里，由插件清单直接渲染。本版本插件行为没有变化。
+
 ## v0.0.10 2026-11-05 更安全的进程终止
 
 ### Fixed
