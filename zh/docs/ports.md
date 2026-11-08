@@ -73,13 +73,7 @@
 
 视图只在可见时重新扫描，切到活动栏的其他图标计时器就停止。扫描失败时视图里只显示一行错误，不会每轮都弹通知。
 
-| 设置                                             | 默认值  | 取值与含义                                                             |
-| ------------------------------------------------ | ------- | ---------------------------------------------------------------------- |
-| `editorConsoleToolkit.ports.refreshInterval`     | `5000`  | 0–600000 毫秒，视图可见时的扫描间隔；`0` 表示只手动刷新                |
-| `editorConsoleToolkit.ports.killTimeout`         | `3000`  | 0–60000 毫秒，发出正常退出请求（`SIGTERM`）后等多久再强制结束          |
-| `editorConsoleToolkit.ports.hideSystemProcesses` | `true`  | 隐藏系统进程（判定见下文）；「切换系统进程的显示」会在用户设置里翻转它 |
-| `editorConsoleToolkit.ports.systemPortMax`       | `1024`  | 0–65535，视为系统端口的最大端口号                                      |
-| `editorConsoleToolkit.ports.includeUdp`          | `false` | 除 TCP 监听外，也列出 UDP 端点                                         |
+端口工具箱的全部设置都使用 `editorConsoleToolkit.ports.*` 这些设置 id。每一项的说明、取值范围与默认值都在设置界面（搜索 "Port Toolkit"）和市场页的 Feature Contributions 标签里，由插件清单直接渲染，不会与实际行为漂移，本页不再重复。
 
 进程从系统目录启动，或者它监听的所有端口都不超过 `systemPortMax` 时，算作系统进程。只要有一个端口高于这个阈值就会显示出来，所以占着 `8080` 的系统进程不会被悄悄藏起来。
 

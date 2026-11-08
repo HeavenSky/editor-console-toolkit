@@ -14,6 +14,7 @@
  * 各域的网络与遥测都全局禁止。分级而不是整体放开, 是为了防止日后无意给 console 命令加上
  * 监听器或计时器, 也为了让"哪个域可以碰磁盘"这件事留在门禁里而不是留在记忆里。
  */
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
@@ -76,6 +77,18 @@ export function activationProblems(pkg) {
 
 export default function checks(root) {
 	return {
+		// 生成物不是独立事实来源: package.json 是默认值真源, 生成模块漂移时在这里卡住。
+		"config 默认值生成物未漂移": () => {
+			try {
+				execFileSync(process.execPath, [join(root, "scripts/gen-config.mjs"), "--check"], {
+					stdio: "pipe",
+				});
+				return [];
+			} catch (error) {
+				return [error.message.trim()];
+			}
+		},
+
 		"src 未使用被禁止的 API": () => {
 			const problems = [];
 			const srcDir = join(root, "src");

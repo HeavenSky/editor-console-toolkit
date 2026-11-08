@@ -2,6 +2,7 @@ import { homedir, userInfo } from "node:os";
 
 import * as vscode from "vscode";
 
+import { CONFIG_DEFAULTS } from "../../config-defaults.generated";
 import { annotateKillability, summarizeFilter } from "../filter";
 import { collectAncestors } from "../protect";
 import { runCommand } from "../scan/exec";
@@ -39,10 +40,16 @@ const CONFIG_SECTION = "editorConsoleToolkit.ports";
 function readConfig() {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	return {
-		refreshInterval: config.get<number>("refreshInterval", 5000),
-		hideSystemProcesses: config.get<boolean>("hideSystemProcesses", true),
-		systemPortMax: config.get<number>("systemPortMax", 1024),
-		includeUdp: config.get<boolean>("includeUdp", false),
+		refreshInterval: config.get<number>(
+			"refreshInterval",
+			CONFIG_DEFAULTS["ports.refreshInterval"]
+		),
+		hideSystemProcesses: config.get<boolean>(
+			"hideSystemProcesses",
+			CONFIG_DEFAULTS["ports.hideSystemProcesses"]
+		),
+		systemPortMax: config.get<number>("systemPortMax", CONFIG_DEFAULTS["ports.systemPortMax"]),
+		includeUdp: config.get<boolean>("includeUdp", CONFIG_DEFAULTS["ports.includeUdp"]),
 	};
 }
 

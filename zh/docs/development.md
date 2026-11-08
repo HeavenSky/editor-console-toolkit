@@ -18,6 +18,8 @@ npm run package
 
 `npm run package` 会生成 `artifacts/<name>-<version>.vsix`，并按 `package.json` 核对包内文件。
 
+改动 `package.json` 里某个设置的默认值后，运行 `node scripts/gen-config.mjs`，并把重新生成的 `src/config-defaults.generated.ts` 和清单改动放在同一次提交里；生成物与清单漂移时 `npm run check` 会失败。
+
 ## 更新截图
 
 `npm run shots`（仅限 macOS）会用独立的配置打开一个新的 VS Code 窗口，逐个演示功能，把压缩后的截图存到 `media/screenshots/`，原尺寸图存到 `artifacts/shots/`。运行期间不要操作这个窗口。它不属于打包和发布流程：界面变化后手动重跑，并把新图和文档一起提交。

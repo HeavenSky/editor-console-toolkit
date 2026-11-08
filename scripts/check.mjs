@@ -17,6 +17,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	checkConfigDefaults,
 	checkInlineRuntimeStrings,
 	checkL10nBundleParity,
 	checkNlsParity,
@@ -71,6 +72,7 @@ run("icon 产物与 spec 一致", () => {
 	return [];
 });
 run("package.nls 与清单占位符一致", () => checkNlsParity(ROOT));
+run("配置默认值 schema 自洽", () => checkConfigDefaults(ROOT));
 run("l10n bundle key 集一致", () => checkL10nBundleParity(ROOT));
 run("内联运行时文案与中文 bundle 一致", () => checkInlineRuntimeStrings(ROOT));
 

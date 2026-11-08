@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { CONFIG_DEFAULTS } from "../config-defaults.generated";
 import {
 	killProcesses,
 	realSendSignal,
@@ -27,7 +28,9 @@ const CONFIG_SECTION = "editorConsoleToolkit.ports";
 const SEARCH_DEBOUNCE = 200;
 
 function killTimeout(): number {
-	return vscode.workspace.getConfiguration(CONFIG_SECTION).get<number>("killTimeout", 3000);
+	return vscode.workspace
+		.getConfiguration(CONFIG_SECTION)
+		.get<number>("killTimeout", CONFIG_DEFAULTS["ports.killTimeout"]);
 }
 
 /** 写进配置而不是只改内存态: 这样设置界面看得见, 重载窗口后仍然保持, 标题栏按钮也能据此切换图标。 */
@@ -149,7 +152,12 @@ export function registerPortCommands(context: vscode.ExtensionContext, view: Por
 
 		vscode.commands.registerCommand("editorConsoleToolkit.ports.toggleSystemProcesses", () => {
 			const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-			return setSystemProcessesHidden(!config.get<boolean>("hideSystemProcesses", true));
+			return setSystemProcessesHidden(
+				!config.get<boolean>(
+					"hideSystemProcesses",
+					CONFIG_DEFAULTS["ports.hideSystemProcesses"]
+				)
+			);
 		}),
 
 		// 标题栏按当前状态只露出其中一个, 图标与标题都表示点击后的动作。

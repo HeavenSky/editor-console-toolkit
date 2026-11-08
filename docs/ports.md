@@ -73,13 +73,7 @@ Each process is first asked to shut down (`SIGTERM`; `taskkill` on Windows) and 
 
 The view rescans only while it is visible: switch to another Activity Bar icon and the timer stops. A failed scan shows one error row in the view instead of a notification on every cycle.
 
-| Setting                                          | Default | Accepted values and meaning                                                               |
-| ------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------- |
-| `editorConsoleToolkit.ports.refreshInterval`     | `5000`  | 0–600000 ms between scans while visible; `0` refreshes only on demand                     |
-| `editorConsoleToolkit.ports.killTimeout`         | `3000`  | 0–60000 ms to wait after the graceful shutdown request (`SIGTERM`) before force-killing   |
-| `editorConsoleToolkit.ports.hideSystemProcesses` | `true`  | hide system processes (see below); Toggle System Processes flips it in your user settings |
-| `editorConsoleToolkit.ports.systemPortMax`       | `1024`  | 0–65535; highest port treated as a system port                                            |
-| `editorConsoleToolkit.ports.includeUdp`          | `false` | also list UDP endpoints, not only TCP listeners                                           |
+All Port Toolkit settings use the `editorConsoleToolkit.ports.*` ids. Each one's meaning, accepted range and default are shown in the Settings UI (search for "Port Toolkit") and on the marketplace page's Feature Contributions tab — those are generated from the extension manifest, so they stay correct without this page repeating them.
 
 A process counts as a system process when it was started from a system directory, or when every port it listens on is at or below `systemPortMax`. One port above the threshold keeps it visible, so a system process squatting on `8080` is never hidden silently.
 

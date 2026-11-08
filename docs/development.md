@@ -18,6 +18,8 @@ npm run package
 
 `npm run package` builds `artifacts/<name>-<version>.vsix` and checks its contents against `package.json`.
 
+After changing a setting's default in `package.json`, run `node scripts/gen-config.mjs` and commit the regenerated `src/config-defaults.generated.ts` together with the manifest change; `npm run check` fails when the generated module drifts.
+
 ## Refresh the screenshots
 
 `npm run shots` (macOS only) opens a separate VS Code window with its own profile, runs each feature and saves compressed screenshots to `media/screenshots/`, with full-size originals in `artifacts/shots/`. Leave the window alone while it runs. It is not part of packaging or release: rerun it when the UI changes and commit the images with the docs.

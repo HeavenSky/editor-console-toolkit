@@ -1,11 +1,10 @@
 import * as vscode from "vscode";
+import { CONFIG_DEFAULTS } from "../config-defaults.generated";
 import { planEdits, planToggleAllLogs } from "../core/planEdits";
 import type { CommandMode } from "../core/planEdits";
 import { createSnapshot } from "../core/snapshot";
 import type { EndOfLine, SelectionLike, UnsupportedCode } from "../core/types";
 import { getAdapter } from "../languages/registry";
-
-const DEFAULT_PREFIX = "🎯🎯🎯 [DEBUG]";
 
 /** 控制字符(含 CR/LF)会破坏生成的字符串字面量, 静默剥离即可, 不打断用户操作. */
 function sanitizePrefix(raw: string): string {
@@ -27,7 +26,7 @@ function readPrefix(document: vscode.TextDocument): string {
 			uri: document.uri,
 			languageId: document.languageId,
 		})
-		.get<string>("prefix", DEFAULT_PREFIX);
+		.get<string>("prefix", CONFIG_DEFAULTS.prefix);
 	return sanitizePrefix(raw);
 }
 
